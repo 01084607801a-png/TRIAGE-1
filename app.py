@@ -3,6 +3,7 @@ import os
 import requests
 import xml.etree.ElementTree as ET
 import math
+import json
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -12,7 +13,12 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 
 # NEMC API Configuration
 NEMC_API_KEY = os.getenv("NEMC_API_KEY")  # Read from .env file for security
+BED_API_KEY = "9405GX6ZR03O0L21"  # Real-time bed info API key
 BASE_URL = "http://apis.data.go.kr/B552657/ErmctInfoInqireService"
+BED_API_URL = "http://apis.data.go.kr/V2/api/DSSP-IF-00242"
+
+# 병상 정보 캐시 (메모리에 저장, 중복 조회 방지)
+bed_info_cache = {}
 
 # Injury Specialty Map (AIS-based, simplified to 7 regions)
 INJURY_SPECIALTY_MAP = {
@@ -68,6 +74,95 @@ def calc_distance_score(patient_lat, patient_lng, hospital_lat, hospital_lng, ma
     score = max(0, 1 - dist_km / max_km)  # Closer is better
     return score, dist_km
 
+def fetch_bed_info(hospital_id, hospital_name=None):
+    """
+    신규 병상 정보 API 호출 (정확한 매칭 필수!)
+    
+    Args:
+        hospital_id: BFR_INST_ID (예: A2800015)
+        hospital_name: 검증용 병원명 (오류 방지)
+    
+    Returns:
+        병상 정보 dict 또는 None
+    """
+    try:
+        # 캐시 확인 (같은 병원 재조회 방지)
+        if hospital_id in bed_info_cache:
+            return bed_info_cache[hospital_id]
+        
+        # API 호출
+        params = {
+            "serviceKey": BED_API_KEY,
+            "BFR_INST_ID": hospital_id
+        }
+        
+        resp = requests.get(BED_API_URL, params=params, timeout=5)
+        
+        if resp.status_code != 200:
+            print(f"Bed API error for {hospital_id}: {resp.status_code}")
+            return None
+        
+        # JSON 응답 파싱
+        data = resp.json()
+        
+        # API 응답 구조에 따라 처리
+        # 보통 result 또는 response.body.items 구조
+        if not data or "response" not in data:
+            return None
+        
+        response_data = data.get("response", {})
+        items = response_data.get("body", {}).get("items", [])
+        
+        if not items:
+            return None
+        
+        bed_data = items[0]
+        
+        # ⚠️ 이름으로 검증 (혼동 방지)
+        if hospital_name and "hospitalName" in bed_data:
+            if hospital_name.strip() not in bed_data.get("hospitalName", ""):
+                print(f"WARNING: Hospital name mismatch! {hospital_name} != {bed_data.get('hospitalName')}")
+                # 이름이 다르면 안전상 조회하지 않음
+                return None
+        
+        # 병상 정보 추출
+        bed_info = {
+            "EMRO": int(bed_data.get("EMRO", 0)) if bed_data.get("EMRO") else 0,  # 응급실
+            "OPRO": int(bed_data.get("OPRO", 0)) if bed_data.get("OPRO") else 0,  # 수술실
+            "WARD": int(bed_data.get("WARD", 0)) if bed_data.get("WARD") else 0,  # 입원실
+            "CRDT_ICU": int(bed_data.get("CRDT_ICU", -1)) if bed_data.get("CRDT_ICU") else -1,  # 외상중환자실 ⭐
+            "GNRL_ICU": int(bed_data.get("GNRL_ICU", 0)) if bed_data.get("GNRL_ICU") else 0,  # 일반중환자실
+            "INME_ICU": int(bed_data.get("INME_ICU", 0)) if bed_data.get("INME_ICU") else 0,  # 내과중환자실
+            "SUDE_ICU": int(bed_data.get("SUDE_ICU", 0)) if bed_data.get("SUDE_ICU") else 0,  # 외과중환자실
+            "CT_AVBL": bed_data.get("CT_AVBL_YN") == "Y",
+            "MRI_AVBL": bed_data.get("MRI_AVBL_YN") == "Y",
+            "VENT_AVBL": bed_data.get("VENT_AVBL_YN") == "Y",
+        }
+        
+        # 음수 병상은 "정보없음" 처리
+        for key, value in bed_info.items():
+            if isinstance(value, int) and value < 0:
+                bed_info[key] = None  # 정보없음으로 표시
+        
+        # 캐시 저장
+        bed_info_cache[hospital_id] = bed_info
+        return bed_info
+    
+    except Exception as e:
+        print(f"fetch_bed_info error for {hospital_id}: {e}")
+        return None
+
+def get_bed_display(bed_info, bed_type="CRDT_ICU"):
+    """병상 정보를 표시용으로 포맷팅"""
+    if not bed_info:
+        return "정보 없음"
+    
+    bed_count = bed_info.get(bed_type)
+    if bed_count is None or bed_count < 0:
+        return "정보 없음"
+    
+    return str(bed_count)
+
 def calc_capability_score(hospital):
     base = LEVEL_SCORE.get(hospital.get("level", ""), 20)
     return base / 100  # Normalize to 0-1
@@ -121,7 +216,9 @@ def fetch_nearby_hospitals(lat, lng, radius_km=50):  # Smaller radius for faster
                     "services": ["내과", "외과", "정형외과", "신경외과", "흉부외과"],  # Default services
                     "level":    level,
                     "hpid":     item.findtext("hpid", ""),
+                    "bfr_inst_id": item.findtext("hpid", ""),  # Assuming same as hpid, will use for bed info
                     "distance": dist,
+                    "bed_info": None,  # Will be filled later
                 })
             
             all_hospitals.extend(page_hospitals)
@@ -129,6 +226,14 @@ def fetch_nearby_hospitals(lat, lng, radius_km=50):  # Smaller radius for faster
             # If this page has less than 100 hospitals, we've reached the end
             if len(page_hospitals) < 100:
                 break
+        
+        # ⚠️ 정확한 매칭: 병상 정보 조회 (병원별로)
+        for hospital in all_hospitals:
+            bed_info = fetch_bed_info(
+                hospital_id=hospital["bfr_inst_id"],
+                hospital_name=hospital["name"]  # 검증용 병원명
+            )
+            hospital["bed_info"] = bed_info
         
         # Sort by distance and return top 50 closest
         all_hospitals.sort(key=lambda x: x["distance"])
@@ -175,34 +280,56 @@ def fetch_realtime_status(hpid):
         return {"hvec": 5, "hvoc": 2}  # Fallback values
 
 def match_hospital(patient, hospitals):
+    """
+    병원 추천 로직 (병상 정보 포함)
+    ⚠️ 정확한 병원-병상 매칭 필수!
+    """
     results = []
     for h in hospitals:
-        # Re-enable specialty filtering - use default services for now
+        # 전문과 필터링
         required = []
         for injury in patient["injuries"]:
             required += INJURY_SPECIALTY_MAP.get(injury, [])
         if required and not any(s in h["services"] for s in set(required)):
             continue  # Skip hospitals that don't have required specialties
 
-        # Check real-time bed availability (require at least 1 bed or unknown data)
+        # 기존 실시간 상태 조회 (기존 API)
         status = fetch_realtime_status(h["hpid"])
         if status["hvec"] is not None and status["hvec"] < 1:  # Skip if known to have 0 beds
             continue  # But allow hospitals with unknown bed status
 
-        # Calculate scores - prioritize capability over distance for treatable hospitals
-        cap = calc_capability_score(h)
+        # 점수 계산
+        cap = calc_capability_score(h)  # 병원 등급 (100점)
         dist_score, dist_km = calc_distance_score(
             patient["lat"], patient["lng"], h["lat"], h["lng"]
-        )
-        # Handle unknown bed availability
+        )  # 거리 (0-1점)
+        
+        # ⭐ 신규 병상 정보 활용 (외상중환자실 우선)
+        bed_score = 0.0
+        bed_info = h.get("bed_info")
+        if bed_info and bed_info.get("CRDT_ICU") is not None and bed_info.get("CRDT_ICU") > 0:
+            # 외상중환자실 병상이 있으면 가산점
+            bed_score = min(bed_info.get("CRDT_ICU", 0) / 10, 1.0)  # Max 0-1 (10개 이상이면 1.0)
+        elif bed_info and bed_info.get("GNRL_ICU") is not None and bed_info.get("GNRL_ICU") > 0:
+            # 일반중환자실도 활용 (우선순위 낮음)
+            bed_score = min(bed_info.get("GNRL_ICU", 0) / 15, 0.7)  # Max 0.7
+        
+        # 기존 API 상태 (참고용)
         if status["hvec"] is not None:
             sat = min(status["hvec"] / 20, 1.0)  # Normalize based on 20 beds
         else:
             sat = 0.5  # Neutral score for unknown availability
         
-        # Adjust scoring: 70% capability, 20% distance, 10% availability
-        score = 0.7 * cap + 0.2 * dist_score + 0.1 * sat
-        results.append({**h, "score": score, "dist_km": dist_km, "status": status})
+        # 최종 점수: 70% 역량, 15% 거리, 10% 신규_병상, 5% 기존상태
+        score = 0.7 * cap + 0.15 * dist_score + 0.1 * bed_score + 0.05 * sat
+        
+        results.append({
+            **h, 
+            "score": score, 
+            "dist_km": dist_km, 
+            "status": status,
+            "bed_score": bed_score,
+        })
 
     return sorted(results, key=lambda x: x["score"], reverse=True)[:3]
 
