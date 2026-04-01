@@ -3,11 +3,15 @@ import os
 import requests
 import xml.etree.ElementTree as ET
 import math
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
 # NEMC API Configuration
-NEMC_API_KEY = "81ea4701080746c75a027b39f2d00f4804a79e51f0dcda46aca479db7ef687fa"  # Hardcoded for testing
+NEMC_API_KEY = os.getenv("NEMC_API_KEY")  # Read from .env file for security
 BASE_URL = "http://apis.data.go.kr/B552657/ErmctInfoInqireService"
 
 # Injury Specialty Map (AIS-based, simplified to 7 regions)

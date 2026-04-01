@@ -15,11 +15,18 @@ pip install -r requirements.txt
 
 ## 환경변수 설정
 
-NEMC API 키를 환경변수로 설정 (실제 병원 데이터 사용):
+### NEMC 병상정보 API 키 설정
+
+국립중앙의료원에서 발급받은 API 키를 환경변수로 설정합니다:
 
 ```powershell
-$env:NEMC_API_KEY = "81ea4701080746c75a027b39f2d00f4804a79e51f0dcda46aca479db7ef687fa"
+$env:NEMC_API_KEY = "YOUR_NEMC_API_KEY_HERE"
 ```
+
+**보안 주의**: 실제 API 키는 GitHub에 업로드하지 않도록 주의하세요. `.env` 파일 사용 권장:
+1. 프로젝트 루트에 `.env` 파일 생성
+2. `NEMC_API_KEY=your_actual_key` 입력  
+3. `.gitignore`에 `.env` 추가됨 (이미 설정)
 
 ## 실행
 
