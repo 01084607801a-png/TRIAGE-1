@@ -31,7 +31,9 @@ python app.py
 
 ## 실행 화면 스크린샷
 
-![TRIAGE-1 실행 화면](assets/triage-1-screenshot.png)
+![TRIAGE-1 실행 화면](./assets/triage-1-screenshot.png)
+
+*이미지가 보이지 않으면 브라우저 새로고침(F5) 또는 GitHub에서 Raw 버튼을 클릭해보세요.*
 
 ## 기능
 
