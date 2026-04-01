@@ -29,6 +29,10 @@ python app.py
 
 브라우저에서 `http://localhost:5000` 접속
 
+## 실행 화면 스크린샷
+
+![TRIAGE-1 실행 화면](assets/triage-1-screenshot.png)
+
 ## 기능
 
 - GCS/SBP/RR/손상유형/나이/위치 입력
