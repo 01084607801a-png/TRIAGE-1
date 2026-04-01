@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TRIAGE-1 v2.0</title>
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+    <main class="container">
+        <h1>🚑 TRIAGE-1 v2.0</h1>
+        <p>외상 환자 최적 병원 매칭 시스템</p>
+
+        <div class="card">
+            <label>GCS 운동점수 (1-6)
+                <div class="gcs-buttons">
+                    <button type="button" data-value="1">1</button>
+                    <button type="button" data-value="2">2</button>
+                    <button type="button" data-value="3">3</button>
+                    <button type="button" data-value="4">4</button>
+                    <button type="button" data-value="5">5</button>
+                    <button type="button" data-value="6">6</button>
+                </div>
+                <input id="gcs_motor" type="hidden" value="6">
+            </label>
+
+            <div class="vitals">
+                <label>SBP (mmHg)<input id="sbp" type="number" min="20" max="300" value="110"></label>
+                <label>RR (/분)<input id="rr" type="number" min="0" max="80" value="18"></label>
+            </div>
+
+            <div class="injury-section">
+                <label>손상 부위 (중복 선택 가능)</label>
+                <div class="injury-grid">
+                    <label><input type="checkbox" value="두부/경부"> 두부/경부</label>
+                    <label><input type="checkbox" value="안면"> 안면</label>
+                    <label><input type="checkbox" value="흉부"> 흉부</label>
+                    <label><input type="checkbox" value="복부"> 복부</label>
+                    <label><input type="checkbox" value="척추"> 척추</label>
+                    <label><input type="checkbox" value="상지"> 상지</label>
+                    <label><input type="checkbox" value="하지"> 하지</label>
+                </div>
+            </div>
+
+            <label><input id="age65" type="checkbox"> 65세 이상</label>
+            <input id="age" type="hidden" value="45">
+
+            <div class="location-section">
+                <label id="location-status">📍 위치 자동 감지 중...</label>
+                <div class="location-inputs">
+                    <label>위도<input id="lat" type="number" step="0.000001" value="35.17"></label>
+                    <label>경도<input id="lng" type="number" step="0.000001" value="126.92"></label>
+                </div>
+            </div>
+
+            <button id="recommendBtn">병원 추천받기</button>
+        </div>
+
+        <div id="result" class="card" style="display:none;"></div>
+    </main>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
