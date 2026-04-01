@@ -18,7 +18,7 @@ pip install -r requirements.txt
 NEMC API 키를 환경변수로 설정 (실제 병원 데이터 사용):
 
 ```powershell
-$env:NEMC_API_KEY = "81ea4701080746c75a027b39f2d00f4804a79e51f0dcda46aca479db7ef687fa"
+$env:NEMC_API_KEY = "여기에_본인_API_키_입력"
 ```
 
 ## 실행
