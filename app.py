@@ -6,6 +6,13 @@ import math
 import json
 from dotenv import load_dotenv
 
+try:
+    from anthropic import Anthropic
+    CLAUDE_AVAILABLE = True
+except ImportError:
+    CLAUDE_AVAILABLE = False
+    print("⚠️  Claude API not available - using fallback text generation")
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -16,6 +23,17 @@ NEMC_API_KEY = os.getenv("NEMC_API_KEY")  # Read from .env file for security
 BED_API_KEY = "9405GX6ZR03O0L21"  # Real-time bed info API key
 BASE_URL = "http://apis.data.go.kr/B552657/ErmctInfoInqireService"
 BED_API_URL = "http://apis.data.go.kr/V2/api/DSSP-IF-00242"
+
+# Claude API Configuration (optional)
+CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY")
+if CLAUDE_AVAILABLE and CLAUDE_API_KEY:
+    claude_client = Anthropic(api_key=CLAUDE_API_KEY)
+else:
+    claude_client = None
+
+# Application Version
+APP_VERSION = "3.0.0"
+APP_VERSION_DATE = "2026-04-01"
 
 # 병상 정보 캐시 (메모리에 저장, 중복 조회 방지)
 bed_info_cache = {}
@@ -361,14 +379,93 @@ def match_hospital(patient, hospitals):
     return sorted(results, key=lambda x: x["score"], reverse=True)[:3]
 
 def generate_explanation(patient, hospital):
-    # Placeholder for Claude API integration
+    """
+    AI를 활용한 병원 추천 근거 생성
+    - Claude API 사용 (실제 손상 분석)
+    - 폴백: 기본 텍스트 생성
+    """
     injuries_str = ", ".join(patient["injuries"])
-    risk = "고위험" if patient["high_risk"] else "중등도"
+    risk_level = "고위험(Level I)" if patient["high_risk"] else "중등도(Level II-III)"
+    
+    # 병상 정보 분석
+    bed_info = hospital.get("bed_info", {})
+    bed_analysis = ""
+    if bed_info:
+        if bed_info.get("CRDT_ICU"):
+            bed_analysis += f"외상중환자실 {bed_info.get('CRDT_ICU')}개 | "
+        if bed_info.get("GNRL_ICU"):
+            bed_analysis += f"일반중환자실 {bed_info.get('GNRL_ICU')}개 | "
+        if bed_info.get("OPRO"):
+            bed_analysis += f"수술실 {bed_info.get('OPRO')}개 | "
+    
+    # Claude API를 사용한 상세 분석
+    if claude_client:
+        try:
+            # 손상 분류별 병상 유형 판단 프롬프트
+            prompt = f"""환자 외상 정보 분석 및 병원 추천 근거 생성
+
+[환자 정보]
+- 위험도: {risk_level}
+- 손상 부위: {injuries_str}
+- 환자 나이: {patient.get('age', '미입력')}세
+- GCS Motor: {patient['gcs_motor']}/6
+- 수축기 혈압: {patient['sbp']} mmHg
+- 호흡수: {patient['rr']}/분
+
+[병원 정보]
+- 이름: {hospital['name']}
+- 등급: {hospital['level']}
+- 거리: {hospital['dist_km']:.1f}km
+- 특화: {hospital['services'][:3]}
+
+[병상 현황]
+{bed_analysis if bed_analysis else "정보 미제공"}
+
+위 정보를 바탕으로:
+1. 환자의 손상 부위에 가장 적합한 병상 유형이 무엇인지
+2. 해당 병원이 그 병상을 보유하고 있는지
+3. 왜 이 병원이 추천되는지
+
+를 한글로 30-50자 내 간결하게 설명하시오. 의료 전문용어 최소화."""
+            
+            message = claude_client.messages.create(
+                model="claude-3-5-sonnet-20241022",  # Latest Sonnet
+                max_tokens=100,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            
+            explanation = message.content[0].text
+            print(f"[CLAUDE] {hospital['name']}: {explanation[:60]}...")
+            return explanation
+            
+        except Exception as e:
+            print(f"[CLAUDE_ERROR] {hospital['name']}: {e}")
+            # 폴백으로 기본 설명 사용
+            pass
+    
+    # 폴백: Claude 없으면 기본 설명
+    reason_parts = []
+    
+    # 손상 분류별 병상 추천
+    if "두부/경부" in patient["injuries"]:
+        reason_parts.append("신경외과 중환자 치료 가능")
+    if "흉부" in patient["injuries"]:
+        reason_parts.append("흉부 외상 전문")
+    if "복부" in patient["injuries"]:
+        reason_parts.append("복강 수술 역량 우수")
+    
+    # 병상 우수성
+    if bed_info and bed_info.get("CRDT_ICU"):
+        reason_parts.append(f"외상중환자실 {bed_info.get('CRDT_ICU')}개")
+    
+    reason_str = " & ".join(reason_parts[:2]) if reason_parts else "권역 중심 의료기관"
     
     return (
-        f"{hospital['name']}을(를) 추천합니다. "
-        f"환자 위험도: {risk}, 손상 부위: {injuries_str}. "
-        f"거리 {hospital['dist_km']:.1f}km, 등급: {hospital['level']}."
+        f"{hospital['name']} 추천 | "
+        f"{reason_str} | "
+        f"거리 {hospital['dist_km']:.1f}km, {hospital['level']}"
     )
 
 
@@ -413,7 +510,12 @@ def recommend():
     return jsonify({
         'matched': matched, 
         'field_triage': triage_result,
-        'patient': patient
+        'patient': patient,
+        'app_version': {
+            'version': APP_VERSION,
+            'date': APP_VERSION_DATE,
+            'claude_enabled': claude_client is not None
+        }
     })
 
 
