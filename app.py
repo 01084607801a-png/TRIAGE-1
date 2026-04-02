@@ -105,18 +105,27 @@ def fetch_bed_info(hospital_id, hospital_name=None):
         # JSON 응답 파싱
         data = resp.json()
         
+        # 🔍 DEBUG: Log raw API response for field inspection
+        print(f"[BED_API_RAW] Hospital ID: {hospital_id}")
+        print(f"[BED_API_RAW] Response keys: {data.keys() if data else 'None'}")
+        if data and "response" in data:
+            print(f"[BED_API_RAW] Response.body keys: {data['response'].get('body', {}).keys()}")
+        
         # API 응답 구조에 따라 처리
         # 보통 result 또는 response.body.items 구조
         if not data or "response" not in data:
+            print(f"[BED_API_ERROR] No response key in data for {hospital_id}")
             return None
         
         response_data = data.get("response", {})
         items = response_data.get("body", {}).get("items", [])
         
         if not items:
+            print(f"[BED_API_WARNING] No items in response for {hospital_id}")
             return None
         
         bed_data = items[0]
+        print(f"[BED_API_RAW] Bed data fields: {bed_data.keys()}")
         
         # ⚠️ 이름으로 검증 (혼동 방지)
         if hospital_name and "hospitalName" in bed_data:
@@ -168,20 +177,28 @@ def calc_capability_score(hospital):
     return base / 100  # Normalize to 0-1
 
 def fetch_nearby_hospitals(lat, lng, radius_km=50):  # Smaller radius for faster response
-    """Fetch emergency hospitals nationwide from NEMC API"""
+    """Fetch emergency hospitals from NEMC API within radius using location parameters"""
     try:
         all_hospitals = []
         
-        # Get only first page for faster response
-        for page in range(1, 2):  # Get only first page (100 hospitals)
+        # Fetch multiple pages with location-based filtering
+        # CRITICAL: Add location parameters to API so it returns hospitals near patient location
+        for page in range(1, 4):  # Get up to 3 pages (300 hospitals) to ensure coverage
             url = f"{BASE_URL}/getEgytListInfoInqire"
             params = {
                 "serviceKey": NEMC_API_KEY,
-                # Remove Q0 for nationwide search
+                "wgs84Lat": lat,      # ⭐ Location parameter: Patient latitude
+                "wgs84Lon": lng,      # ⭐ Location parameter: Patient longitude
+                "radius": radius_km,  # ⭐ Location parameter: Search radius in km
                 "pageNo": page,
-                "numOfRows": 100,  # Max per page
+                "numOfRows": 100,  # Max per page (300 total max)
             }
             resp = requests.get(url, params=params, timeout=5)  # Shorter timeout
+            
+            if resp.status_code != 200:
+                print(f"API call page {page} failed with status {resp.status_code}")
+                break  # Stop pagination if API fails
+            
             root = ET.fromstring(resp.content)
             
             page_hospitals = []
@@ -193,6 +210,8 @@ def fetch_nearby_hospitals(lat, lng, radius_km=50):  # Smaller radius for faster
                     continue  # Skip hospitals without coordinates
                     
                 dist = haversine(lat, lng, h_lat, h_lng)
+                
+                # Additional filter just in case API params don't work
                 if dist > radius_km:
                     continue  # Skip hospitals outside radius
                 
@@ -234,6 +253,12 @@ def fetch_nearby_hospitals(lat, lng, radius_km=50):  # Smaller radius for faster
                 hospital_name=hospital["name"]  # 검증용 병원명
             )
             hospital["bed_info"] = bed_info
+            
+            # 🔍 DEBUG: Log bed info retrieval
+            if bed_info:
+                print(f"[BED_INFO] {hospital['name']}: CRDT_ICU={bed_info.get('CRDT_ICU')}, GNRL_ICU={bed_info.get('GNRL_ICU')}")
+            else:
+                print(f"[BED_INFO] {hospital['name']}: API returned None")
         
         # Sort by distance and return top 50 closest
         all_hospitals.sort(key=lambda x: x["distance"])
@@ -277,7 +302,9 @@ def fetch_realtime_status(hpid):
         }
     except Exception as e:
         print(f"Status API error for {hpid}: {e}")
-        return {"hvec": 5, "hvoc": 2}  # Fallback values
+        # ⚠️ CRITICAL FIX: No hardcoded fallback!
+        # Return None instead of hardcoded "5" to avoid static bed counts
+        return {"hvec": None, "hvoc": None}
 
 def match_hospital(patient, hospitals):
     """
