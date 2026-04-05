@@ -245,6 +245,22 @@ def calc_capability_score(hospital):
     return base / 100
 
 
+def get_specialty_match_score(required_specs, hospital_services):
+    """
+    전문과 일치도 점수 계산
+    score = (일치 전문과 수 / 필수 전문과 수) * 100
+    반환값은 0.0~1.0 범위로 정규화
+    """
+    required_set = set(required_specs)
+    if not required_set:
+        return 1.0
+
+    hospital_set = set(hospital_services or [])
+    matched = len(required_set.intersection(hospital_set))
+    score_percent = (matched / len(required_set)) * 100
+    return score_percent / 100
+
+
 def fetch_nearby_hospitals(lat, lng, radius_km=50):
     """
     주변 응급병원 조회
@@ -314,6 +330,16 @@ def fetch_nearby_hospitals(lat, lng, radius_km=50):
                 dgid_list = item.findtext("dgidIdName", "")
                 services = [s.strip() for s in dgid_list.split("|") if s.strip()] if dgid_list else []
                 services_confirmed = len(services) > 0
+
+                # API 전문과 필드 누락 시 병원 등급 기반 최소 전담과 추론
+                # 권역외상센터/응급의료센터는 핵심 외상 전담과를 기본 보유로 가정
+                if not services_confirmed:
+                    if level in ("권역외상센터", "지역외상센터"):
+                        services = ["외과", "흉부외과", "정형외과", "신경외과"]
+                        services_confirmed = True
+                    elif level in ("권역응급의료센터", "지역응급의료센터"):
+                        services = ["외과", "정형외과", "신경외과"]
+                        services_confirmed = True
 
                 # hpid를 bfr_inst_id로 임시 사용
                 # ⚠️ 한계: 두 API의 기관 ID 체계가 다를 수 있음
@@ -401,7 +427,7 @@ def match_hospital(patient, hospitals):
     """
     병원 추천 점수 계산
 
-    최종 점수 = 0.70 * 역량 + 0.15 * 거리 + 0.10 * 병상 + 0.05 * 상태 + 병상패널티
+    최종 점수 = 0.60 * 역량 + 0.15 * 거리 + 0.10 * 병상 + 0.05 * 상태 + 0.10 * 전문과일치 + 병상패널티
     가중치 근거:
       - 역량(0.70): 중증 외상은 역량 우선이 사망률 감소와 직결 (Kang 2022, 보건복지부 고시)
       - 거리(0.15): 중증 환자 최빈 이송 시간 30~60분 (2024 외상 통계연보)
@@ -412,16 +438,24 @@ def match_hospital(patient, hospitals):
     results = []
 
     for h in hospitals:
-        # 전문과 필터링 (실제 데이터 있을 때만 적용)
+        # 복수 손상 필수 전문과 계산 (중복 제거)
         required = []
         for injury in patient["injuries"]:
             required += INJURY_SPECIALTY_MAP.get(injury, [])
 
-        if required and h.get("services_confirmed"):
-            if not any(s in h["services"] for s in set(required)):
-                # 실제 전문과 데이터 있는데 해당 과 없으면 제외
+        required_specs = set(required)
+
+        # AND 필터링: 복수 손상 시 모든 필수 전문과를 갖춰야 통과
+        # (예: 두부+흉부 -> 신경외과 AND 흉부외과)
+        if required_specs:
+            if not h.get("services_confirmed"):
                 continue
-        # services_confirmed=False면 필터링 건너뜀 (undertriage 방지)
+
+            hospital_services = set(h.get("services", []))
+            if not all(spec in hospital_services for spec in required_specs):
+                continue
+
+        specialty_match_score = get_specialty_match_score(required_specs, h.get("services", []))
 
         # 실시간 상태 조회
         status = fetch_realtime_status(h["hpid"])
@@ -473,10 +507,11 @@ def match_hospital(patient, hospitals):
 
         # 최종 점수
         score = (
-            0.70 * cap
+            0.60 * cap
             + 0.15 * dist_score
             + 0.10 * bed_score
             + 0.05 * sat
+            + 0.10 * specialty_match_score
             + bed_availability_penalty
         )
         score = max(0, score)  # 음수 방지
@@ -487,6 +522,8 @@ def match_hospital(patient, hospitals):
             "dist_km":  dist_km,
             "status":   status,
             "bed_score": bed_score,
+            "specialty_match_score": specialty_match_score,
+            "required_specialties": sorted(list(required_specs)),
         })
 
     return sorted(results, key=lambda x: x["score"], reverse=True)[:3]
@@ -619,7 +656,7 @@ def recommend():
     except Exception as e:
         return jsonify({'error': '입력값을 확인하세요', 'detail': str(e)}), 400
 
-    hospitals = fetch_nearby_hospitals(patient['lat'], patient['lng'])
+    hospitals = fetch_nearby_hospitals(patient['lat'], patient['lng'], radius_km=50)
 
     if not hospitals:
         return jsonify({
@@ -638,6 +675,19 @@ def recommend():
     patient['high_risk'] = triage_result['high_risk']
 
     matched = match_hospital(patient, hospitals)
+
+    # AND 필터로 결과가 비는 경우 반경 확장 재탐색
+    # 50km -> 120km -> 200km 순으로 확대
+    search_radius_used = 50
+    if not matched:
+        for radius in (120, 200):
+            hospitals_wide = fetch_nearby_hospitals(patient['lat'], patient['lng'], radius_km=radius)
+            if not hospitals_wide:
+                continue
+            matched = match_hospital(patient, hospitals_wide)
+            if matched:
+                search_radius_used = radius
+                break
     for h in matched:
         h['reason'] = generate_explanation(patient, h)
 
@@ -650,6 +700,7 @@ def recommend():
             'date':            APP_VERSION_DATE,
             'claude_enabled':  claude_client is not None,
         },
+        'search_radius_km': search_radius_used,
         'data_sources': {
             'triage_guideline': 'CDC 2021 Field Triage Guidelines',
             'injury_classification': 'AIS/ISS — Baker et al. (1974)',
