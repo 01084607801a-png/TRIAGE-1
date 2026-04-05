@@ -4,3 +4,7 @@ python-dotenv
 gunicorn>=20.1.0
 pyngrok>=5.1.0
 anthropic>=0.7.0
+numpy>=1.26.0
+pandas>=2.2.0
+matplotlib>=3.8.0
+scikit-learn>=1.4.0
