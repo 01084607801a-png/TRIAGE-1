@@ -48,7 +48,10 @@ except ImportError:
     sys.exit(1)
 
 
-DATA_PATH = 'data/synthetic_trauma_data.csv'
+DATA_CANDIDATE_PATHS = [
+    'data/synthetic_trauma_data.csv',
+    'data/data',
+]
 MODELS_DIR = 'models'
 
 FEATURES = [
@@ -371,14 +374,21 @@ def main():
     configure_korean_font()
     os.makedirs(MODELS_DIR, exist_ok=True)
 
-    if not os.path.exists(DATA_PATH):
-        print(f'[오류] 데이터 파일이 없습니다: {DATA_PATH}')
+    data_path = None
+    for candidate in DATA_CANDIDATE_PATHS:
+        if os.path.exists(candidate):
+            data_path = candidate
+            break
+
+    if data_path is None:
+        print('[오류] 학습 데이터 파일이 없습니다.')
+        print('      확인 경로: data/synthetic_trauma_data.csv 또는 data/data')
         print('      먼저 다음 명령을 실행하세요: python synthetic_data_generator.py')
         return
 
     # 1) 데이터 로드
-    df = pd.read_csv(DATA_PATH)
-    print(f'[데이터] {len(df)}건 로드 완료')
+    df = pd.read_csv(data_path)
+    print(f'[데이터] {len(df)}건 로드 완료 (source={data_path})')
 
     le = LabelEncoder()
     df['mechanism_enc'] = le.fit_transform(df['mechanism'])
