@@ -331,6 +331,14 @@ def fetch_nearby_hospitals(lat, lng, radius_km=50):
     주변 응급병원 조회
     API: NEMC 전국 응급의료기관 정보 조회 서비스
     위치 파라미터(wgs84Lat, wgs84Lon, radius) 전달로 위치 기반 조회
+    
+    ============================================================
+    Hospital API 응답에 가용병상 정보 포함:
+    - hvec: 응급실 가용병상 (음수 = 정보 없음)
+    - hvoc: 수술실 가용병상
+    - hvicc: 일반중환자실 (ICU)
+    - hvncc: 신생아중환자실
+    ============================================================
     """
     try:
         if not HOSPITAL_API_KEY:
@@ -411,6 +419,19 @@ def fetch_nearby_hospitals(lat, lng, radius_km=50):
                 # → API1 응답 필드 로그 확인 후 올바른 필드로 교체 필요
                 hpid = item.findtext("hpid", "")
 
+                # ============================================================
+                # Hospital API 응답에서 직접 병상 정보 파싱
+                # 필드: hvec(응급실), hvoc(수술실), hvicc(일반중환자실), hvncc(신생아중환자실)
+                # 음수 = 정보 없음 → None으로 처리
+                # ============================================================
+                bed_info = {}
+                for key in ["hvec", "hvoc", "hvicc", "hvncc"]:
+                    try:
+                        val = int(item.findtext(key, -1) or -1)
+                        bed_info[key] = val if val >= 0 else None
+                    except:
+                        bed_info[key] = None
+
                 page_hospitals.append({
                     "name":               name,
                     "address":            item.findtext("dutyAddr", ""),
@@ -423,7 +444,9 @@ def fetch_nearby_hospitals(lat, lng, radius_km=50):
                     "hpid":               hpid,
                     "bfr_inst_id":        hpid,
                     "distance":           dist,
-                    "bed_info":           None,
+                    "bed_info":           bed_info,
+                    "hvec":               bed_info.get("hvec"),
+                    "hvoc":               bed_info.get("hvoc"),
                 })
 
             all_hospitals.extend(page_hospitals)
@@ -431,18 +454,12 @@ def fetch_nearby_hospitals(lat, lng, radius_km=50):
             if len(page_hospitals) < 100:
                 break
 
-        # 병상 정보 조회
+        # 병상 정보 로그
         for hospital in all_hospitals:
-            bed_info = fetch_bed_info(
-                hospital_id=hospital["bfr_inst_id"],
-                hospital_name=hospital["name"]
-            )
-            hospital["bed_info"] = bed_info
-
-            if bed_info:
-                print(f"[BED_INFO] {hospital['name']}: CRDT_ICU={bed_info.get('CRDT_ICU')}, GNRL_ICU={bed_info.get('GNRL_ICU')}")
-            else:
-                print(f"[BED_INFO] {hospital['name']}: None")
+            hvec = hospital.get("hvec")
+            hvoc = hospital.get("hvoc")
+            hvicc = hospital.get("bed_info", {}).get("hvicc")
+            print(f"[BED_INFO] {hospital['name']}: hvec={hvec}, hvoc={hvoc}, hvicc={hvicc}")
 
         all_hospitals.sort(key=lambda x: x["distance"])
         return all_hospitals[:50]
@@ -522,8 +539,11 @@ def match_hospital(patient, hospitals):
 
         specialty_match_score = get_specialty_match_score(required_specs, h.get("services", []))
 
-        # 실시간 상태 조회
-        status = fetch_realtime_status(h["hpid"])
+        # ============================================================
+        # Hospital API 응답에서 직접 사용 (BED API 불필요)
+        # hvec = 응급실 가용병상 (음수 = 정보 없음)
+        # ============================================================
+        hvec = h.get("hvec")
 
         # ============================================================
         # 병상 0개 → Filter-out 제거, Penalty로 변경
@@ -532,7 +552,7 @@ def match_hospital(patient, hospitals):
         #       Filter-out은 undertriage로 사망률 급증 위험
         # ============================================================
         bed_availability_penalty = 0.0
-        if status["hvec"] is not None and status["hvec"] < 1:
+        if hvec is not None and hvec < 1:
             bed_availability_penalty = -0.05  # 소폭 감점만, 제외 안 함
 
         # 역량 점수
@@ -545,23 +565,22 @@ def match_hospital(patient, hospitals):
 
         # ============================================================
         # 병상 점수
-        # 외상중환자실 만점 기준: 20개 (보건복지부 고시 최소 기준)
-        # 기존 10개 → 20개로 상향 (법적 최소 요건 반영)
-        # 일반중환자실 상한: 0.6 (외상중환자실 대비 우선순위 낮음)
+        # 응급실 가용병상 기준: 최대 20개 기준
+        # 응급실 병상이 없으면 중환자실 대용
         # ============================================================
         bed_score = 0.0
-        bed_info = h.get("bed_info")
-        if bed_info:
-            if bed_info.get("CRDT_ICU") is not None and bed_info.get("CRDT_ICU") > 0:
-                # [근거] 보건복지부 고시: 권역외상센터 외상중환자실 최소 20병상
-                bed_score = min(bed_info["CRDT_ICU"] / 20, 1.0)
-            elif bed_info.get("GNRL_ICU") is not None and bed_info.get("GNRL_ICU") > 0:
-                # 일반중환자실: 외상 전용 아니므로 상한 0.6
-                bed_score = min(bed_info["GNRL_ICU"] / 20, 0.6)
+        bed_info = h.get("bed_info", {})
+        
+        if hvec is not None and hvec > 0:
+            # 응급실 가용병상 우선
+            bed_score = min(hvec / 20, 1.0)
+        elif bed_info.get("hvicc") is not None and bed_info.get("hvicc") > 0:
+            # 일반중환자실 대용 (응급실 우선순위 낮음)
+            bed_score = min(bed_info["hvicc"] / 20, 0.6)
 
-        # 실시간 포화도 점수
-        if status["hvec"] is not None:
-            sat = min(status["hvec"] / 20, 1.0)
+        # 응급실 포화도 점수 (hvec 기반)
+        if hvec is not None and hvec >= 0:
+            sat = min(hvec / 20, 1.0)
         else:
             # ============================================================
             # 병상 정보 None → 중립값 0.5
@@ -608,7 +627,6 @@ def match_hospital(patient, hospitals):
             **h,
             "score":    score,
             "dist_km":  dist_km,
-            "status":   status,
             "bed_score": bed_score,
             "specialty_match_score": specialty_match_score,
             "required_specialties": sorted(list(required_specs)),

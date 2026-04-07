@@ -160,13 +160,13 @@ class TriageDesktopApp:
                 return
 
             for i, h in enumerate(matched, start=1):
-                status = h.get("status", {})
-                hvec = status.get("hvec")
-                bed_text = "정보 없음" if hvec is None else f"{hvec}개"
+                hvec = h.get("hvec")
+                hvoc = h.get("hvoc")
+                bed_text = f"응급:{hvec if hvec is not None else '정보없음'} | 수술:{hvoc if hvoc is not None else '정보없음'}"
                 ml_prob = h.get("ml_rtc_probability")
                 
                 self.output.insert(tk.END, f"[{i}순위] {h.get('name')}\n")
-                self.output.insert(tk.END, f"  거리: {h.get('dist_km', 0):.1f}km | 등급: {h.get('level')} | 가용병상: {bed_text}\n")
+                self.output.insert(tk.END, f"  거리: {h.get('dist_km', 0):.1f}km | 등급: {h.get('level')} | 병상: {bed_text}\n")
                 if ml_prob is not None:
                     self.output.insert(tk.END, f"  점수: {h.get('score'):.3f} (ML확률: {ml_prob:.1%})\n")
                 else:
