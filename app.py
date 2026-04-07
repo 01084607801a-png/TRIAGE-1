@@ -518,6 +518,13 @@ def match_hospital(patient, hospitals):
     ⚠️ 한계: KTDB 다변량 회귀분석 전까지 잠정값
     """
     results = []
+    
+    # 디버그: 필수 전문과 계산
+    required = []
+    for injury in patient.get("injuries", []):
+        required += INJURY_SPECIALTY_MAP.get(injury, [])
+    required_specs = set(required)
+    print(f"[MATCH] 필수전문과: {required_specs}, 손상부위: {patient.get('injuries')}")
 
     for h in hospitals:
         # 복수 손상 필수 전문과 계산 (중복 제거)
@@ -531,10 +538,12 @@ def match_hospital(patient, hospitals):
         # (예: 두부+흉부 -> 신경외과 AND 흉부외과)
         if required_specs:
             if not h.get("services_confirmed"):
+                print(f"[MATCH_FILTER] {h['name']}: services_confirmed=False → 제외")
                 continue
 
             hospital_services = set(h.get("services", []))
             if not all(spec in hospital_services for spec in required_specs):
+                print(f"[MATCH_FILTER] {h['name']}: 전문과 부재 (필수:{required_specs}, 보유:{hospital_services}) → 제외")
                 continue
 
         specialty_match_score = get_specialty_match_score(required_specs, h.get("services", []))
@@ -777,12 +786,15 @@ def recommend():
             }
         }), 503
 
+    print(f"[RECOMMEND] 초기 조회 병원 수: {len(hospitals)}, 손상부위: {patient['injuries']}")
+    
     triage_result = cdc_field_triage_2021(
         patient['gcs_motor'], patient['sbp'], patient['rr'], patient['age']
     )
     patient['high_risk'] = triage_result['high_risk']
 
     matched = match_hospital(patient, hospitals)
+    print(f"[RECOMMEND] 50km 매칭 결과: {len(matched)}개")
 
     # AND 필터로 결과가 5개 미만인 경우 반경 확장 재탐색
     # 50km -> 120km -> 200km 순으로 확대하여 최대 5개까지 수집
@@ -791,10 +803,13 @@ def recommend():
         for radius in (120, 200):
             if len(matched) >= 5:
                 break
+            print(f"[RECOMMEND] {radius}km 반경으로 재탐색...")
             hospitals_wide = fetch_nearby_hospitals(patient['lat'], patient['lng'], radius_km=radius)
+            print(f"[RECOMMEND] {radius}km 조회 병원: {len(hospitals_wide)}개")
             if not hospitals_wide:
                 continue
             matched_wide = match_hospital(patient, hospitals_wide)
+            print(f"[RECOMMEND] {radius}km 매칭 결과: {len(matched_wide)}개")
             if matched_wide:
                 # 기존 결과와 추가 결과 합치기 (중복 제거)
                 matched_ids = {h["hpid"] for h in matched}
@@ -804,6 +819,11 @@ def recommend():
                         matched_ids.add(h["hpid"])
                 if len(matched) > 0:
                     search_radius_used = radius
+    
+    print(f"[RECOMMEND] 최종 매칭 결과: {len(matched)}개 (반경: {search_radius_used}km)")
+    if not matched:
+        print(f"[RECOMMEND_WARN] 추천 가능한 병원 없음")
+    
     for h in matched:
         h['reason'] = generate_explanation(patient, h)
 
