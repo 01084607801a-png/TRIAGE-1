@@ -616,7 +616,7 @@ def match_hospital(patient, hospitals):
             "ml_used_for_scoring": ml_used,
         })
 
-    return sorted(results, key=lambda x: x["score"], reverse=True)[:3]
+    return sorted(results, key=lambda x: x["score"], reverse=True)[:5]
 
 
 def generate_explanation(patient, hospital):
@@ -766,18 +766,26 @@ def recommend():
 
     matched = match_hospital(patient, hospitals)
 
-    # AND 필터로 결과가 비는 경우 반경 확장 재탐색
-    # 50km -> 120km -> 200km 순으로 확대
+    # AND 필터로 결과가 5개 미만인 경우 반경 확장 재탐색
+    # 50km -> 120km -> 200km 순으로 확대하여 최대 5개까지 수집
     search_radius_used = 50
-    if not matched:
+    if len(matched) < 5:
         for radius in (120, 200):
+            if len(matched) >= 5:
+                break
             hospitals_wide = fetch_nearby_hospitals(patient['lat'], patient['lng'], radius_km=radius)
             if not hospitals_wide:
                 continue
-            matched = match_hospital(patient, hospitals_wide)
-            if matched:
-                search_radius_used = radius
-                break
+            matched_wide = match_hospital(patient, hospitals_wide)
+            if matched_wide:
+                # 기존 결과와 추가 결과 합치기 (중복 제거)
+                matched_ids = {h["hpid"] for h in matched}
+                for h in matched_wide:
+                    if h["hpid"] not in matched_ids and len(matched) < 5:
+                        matched.append(h)
+                        matched_ids.add(h["hpid"])
+                if len(matched) > 0:
+                    search_radius_used = radius
     for h in matched:
         h['reason'] = generate_explanation(patient, h)
 
