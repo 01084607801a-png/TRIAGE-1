@@ -11,3 +11,4 @@
 - improvement_04_user_data_training.md
 - improvement_05_ai_interpretability_clinical_validity.md
 - improvement_06_ui_empty_state_and_desktop_runner.md
+- improvement_07_ml_model_integration.md

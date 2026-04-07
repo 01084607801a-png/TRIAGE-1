@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 import math
 import json
 import time
+import pickle
 from dotenv import load_dotenv
 
 try:
@@ -42,6 +43,26 @@ if not HOSPITAL_API_KEY:
     print("[CONFIG_WARNING] HOSPITAL API key not set. Set NEMC_HOSPITAL_API_KEY or NEMC_API_KEY")
 if not BED_API_KEY:
     print("[CONFIG_WARNING] BED API key not set. Set NEMC_BED_API_KEY or BED_API_KEY")
+
+# ============================================================
+# ML 모델 로드
+# models/triage_classifier.pkl이 존재하면 자동 로드
+# 없으면 규칙 기반 전용 모드로 작동
+# ============================================================
+ML_MODEL = None
+ML_LABEL_ENCODER = None
+ML_ACCURACY = None
+try:
+    with open("models/triage_classifier.pkl", "rb") as f:
+        model_data = pickle.load(f)
+    ML_MODEL = model_data["model"]
+    ML_LABEL_ENCODER = model_data["label_encoder"]
+    ML_ACCURACY = model_data.get("accuracy", None)
+    print(f"[ML] 모델 로드 완료 — Random Forest Accuracy {ML_ACCURACY*100:.1f}% (Test Set)")
+except FileNotFoundError:
+    print("[ML] 모델 파일 없음(models/triage_classifier.pkl) → 규칙 기반 전용 모드")
+except Exception as e:
+    print(f"[ML] 모델 로드 오류: {e} → 규칙 기반 전용 모드")
 
 # ============================================================
 # 손상 부위 → 전문과 매핑
@@ -243,6 +264,50 @@ def fetch_bed_info(hospital_id, hospital_name=None):
 def calc_capability_score(hospital):
     base = LEVEL_SCORE.get(hospital.get("level", ""), 10)
     return base / 100
+
+
+def predict_rtc_probability(patient: dict) -> float:
+    """
+    Random Forest로 권역외상센터 필요 확률 예측
+    반환값: 0.0~1.0 (높을수록 권역외상센터 필요)
+    모델 없으면 -1 반환 (규칙 기반으로 대체)
+    
+    근거: 실제 데이터 학습 기반 (data/data, 2000 환자)
+    features: age, mechanism_enc, gcs_motor, sbp, rr, head_neck, thorax, abdomen, extremity, spine
+    """
+    if ML_MODEL is None:
+        return -1.0
+
+    try:
+        injuries = patient.get("injuries", [])
+        mech_raw = patient.get("mechanism", "기타")
+
+        # 기전 인코딩
+        try:
+            mech_enc = ML_LABEL_ENCODER.transform([mech_raw])[0]
+        except:
+            mech_enc = 0
+
+        # train_model.py와 동일한 순서로 피처 구성
+        features = [[
+            patient.get("age", 40),
+            mech_enc,
+            patient.get("gcs_motor", 6),
+            patient.get("sbp", 120),
+            patient.get("rr", 16),
+            int("두부/경부" in injuries),
+            int("흉부" in injuries),
+            int("복부/골반장기" in injuries),
+            int("사지/골반골격" in injuries),
+            int("척추" in injuries),
+        ]]
+
+        prob = ML_MODEL.predict_proba(features)[0][1]
+        return float(prob)
+
+    except Exception as e:
+        print(f"[ML_PREDICT_ERROR] {e}")
+        return -1.0
 
 
 def get_specialty_match_score(required_specs, hospital_services):
@@ -505,16 +570,39 @@ def match_hospital(patient, hospitals):
             # ============================================================
             sat = 0.5
 
-        # 최종 점수
-        score = (
-            0.60 * cap
-            + 0.15 * dist_score
-            + 0.10 * bed_score
-            + 0.05 * sat
-            + 0.10 * specialty_match_score
-            + bed_availability_penalty
-        )
-        score = max(0, score)  # 음수 방지
+        # ============================================================
+        # ML 모델 통합 앙상블 점수 계산
+        # 규칙 기반: 역량(60%) + 거리(15%) + 병상(10%) + 상태(5%)
+        # 가중치: 규칙 60% + ML 40%
+        # 근거: ML은 실제 데이터 기반 needs_rtc 확률 반영
+        #       규칙은 임상 논문 근거(CDC 2021, Kang 2022) 반영
+        # ============================================================
+        ml_prob = predict_rtc_probability(patient)
+
+        if ml_prob >= 0:
+            # 규칙 기반 점수 (최종 정규화 전)
+            rule_score = (
+                0.70 * cap
+                + 0.15 * dist_score
+                + 0.10 * bed_score
+                + 0.05 * sat
+            )
+            # 앙상블: 규칙 60% + ML 40%
+            score = 0.60 * rule_score + 0.40 * ml_prob
+            ml_used = True
+        else:
+            # ML 없으면 기존 규칙 기반 100%
+            score = (
+                0.60 * cap
+                + 0.15 * dist_score
+                + 0.10 * bed_score
+                + 0.05 * sat
+                + 0.10 * specialty_match_score
+            )
+            ml_used = False
+            ml_prob = None
+
+        score = max(0, score + bed_availability_penalty)  # 음수 방지
 
         results.append({
             **h,
@@ -524,6 +612,8 @@ def match_hospital(patient, hospitals):
             "bed_score": bed_score,
             "specialty_match_score": specialty_match_score,
             "required_specialties": sorted(list(required_specs)),
+            "ml_rtc_probability": ml_prob,
+            "ml_used_for_scoring": ml_used,
         })
 
     return sorted(results, key=lambda x: x["score"], reverse=True)[:3]
@@ -691,6 +781,16 @@ def recommend():
     for h in matched:
         h['reason'] = generate_explanation(patient, h)
 
+    ml_rtc_prob = predict_rtc_probability(patient)
+    ml_info = {
+        'loaded': ML_MODEL is not None,
+        'accuracy': ML_ACCURACY,
+        'rtc_probability': ml_rtc_prob if ml_rtc_prob >= 0 else None,
+        'model_type': 'Random Forest',
+        'training_data': 'data/data (2000 patients)',
+        'feature_count': 10,
+    }
+    
     return jsonify({
         'matched':       matched,
         'field_triage':  triage_result,
@@ -700,6 +800,7 @@ def recommend():
             'date':            APP_VERSION_DATE,
             'claude_enabled':  claude_client is not None,
         },
+        'ml_model': ml_info,
         'search_radius_km': search_radius_used,
         'data_sources': {
             'triage_guideline': 'CDC 2021 Field Triage Guidelines',
@@ -707,6 +808,7 @@ def recommend():
             'korea_accuracy': 'Kang et al. (2022), BMC Emergency Medicine',
             'hospital_standard': '보건복지부 권역외상센터 지정기준 (별표 7의2)',
             'epidemiology': '2024 외상등록체계 통계연보 (중앙응급의료센터)',
+            'ml_training': 'Real patient data + Random Forest classification',
             'synthetic_data': 'KTDB 원자료 미확보 — 논문 통계치 기반 합성 데이터 사용',
         }
     })
