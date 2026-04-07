@@ -80,6 +80,16 @@ document.getElementById('recommendBtn').addEventListener('click', async () => {
         const data = await resp.json();
 
         let html = `<small>CDC Triage 2021: ${data.field_triage.high_risk ? '고위험 외상' : '중등도 외상'}</small>`;
+
+        if (!data.matched || data.matched.length === 0) {
+            html += `<div class='result-item'><strong>추천 가능한 병원이 없습니다.</strong><br>`
+                 + `현재 반경 ${data.search_radius_km || 50}km 내에서 조건을 만족하는 병원을 찾지 못했습니다.<br>`
+                 + `손상 부위를 줄이거나 좌표를 확인한 뒤 다시 시도해 주세요.</div>`;
+            html += `<div class='disclaimer'>⚠️ 본 시스템은 의사결정 지원 도구입니다. 최종 이송 결정은 반드시 담당 구급대원이 합니다.</div>`;
+            resultEl.innerHTML = html;
+            return;
+        }
+
         data.matched.forEach((h, i) => {
             const rank = i === 0 ? '★' : `${i+1}`;
             let bedText = '정보 없음';

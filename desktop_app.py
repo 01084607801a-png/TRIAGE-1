@@ -1,0 +1,172 @@
+"""TRIAGE-1 Desktop client (Tkinter).
+
+Run this file to launch a native desktop UI and test recommendations
+without manually opening the browser.
+"""
+
+import os
+import subprocess
+import sys
+import time
+import urllib.request
+import tkinter as tk
+from tkinter import ttk
+from tkinter import messagebox
+from tkinter.scrolledtext import ScrolledText
+
+import requests
+
+
+BASE_URL = "http://127.0.0.1:5000"
+
+
+def wait_server(url, timeout=25):
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            with urllib.request.urlopen(url, timeout=2) as resp:
+                if resp.status in (200, 404):
+                    return True
+        except Exception:
+            pass
+        time.sleep(0.4)
+    return False
+
+
+def start_flask_server():
+    app_py = os.path.join(os.path.dirname(__file__), "app.py")
+    proc = subprocess.Popen([sys.executable, app_py])
+    if not wait_server(BASE_URL):
+        proc.terminate()
+        raise RuntimeError("Flask 서버 시작 실패")
+    return proc
+
+
+class TriageDesktopApp:
+    def __init__(self, root, server_proc):
+        self.root = root
+        self.server_proc = server_proc
+        self.root.title("TRIAGE-1 Desktop")
+        self.root.geometry("980x740")
+
+        self.injuries_options = ["두부/경부", "안면", "흉부", "복부", "척추", "상지", "하지"]
+        self.injury_vars = {}
+
+        self._build_ui()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def _build_ui(self):
+        frame = ttk.Frame(self.root, padding=12)
+        frame.pack(fill="both", expand=True)
+
+        ttk.Label(frame, text="TRIAGE-1 Desktop 테스트", font=("Malgun Gothic", 14, "bold")).grid(row=0, column=0, columnspan=4, sticky="w")
+
+        ttk.Label(frame, text="GCS Motor").grid(row=1, column=0, sticky="w", pady=(10, 4))
+        self.gcs_var = tk.StringVar(value="6")
+        ttk.Entry(frame, textvariable=self.gcs_var, width=12).grid(row=1, column=1, sticky="w", pady=(10, 4))
+
+        ttk.Label(frame, text="SBP").grid(row=1, column=2, sticky="w", pady=(10, 4))
+        self.sbp_var = tk.StringVar(value="110")
+        ttk.Entry(frame, textvariable=self.sbp_var, width=12).grid(row=1, column=3, sticky="w", pady=(10, 4))
+
+        ttk.Label(frame, text="RR").grid(row=2, column=0, sticky="w", pady=4)
+        self.rr_var = tk.StringVar(value="18")
+        ttk.Entry(frame, textvariable=self.rr_var, width=12).grid(row=2, column=1, sticky="w", pady=4)
+
+        ttk.Label(frame, text="Age").grid(row=2, column=2, sticky="w", pady=4)
+        self.age_var = tk.StringVar(value="45")
+        ttk.Entry(frame, textvariable=self.age_var, width=12).grid(row=2, column=3, sticky="w", pady=4)
+
+        ttk.Label(frame, text="Latitude").grid(row=3, column=0, sticky="w", pady=4)
+        self.lat_var = tk.StringVar(value="37.5665")
+        ttk.Entry(frame, textvariable=self.lat_var, width=18).grid(row=3, column=1, sticky="w", pady=4)
+
+        ttk.Label(frame, text="Longitude").grid(row=3, column=2, sticky="w", pady=4)
+        self.lng_var = tk.StringVar(value="126.9780")
+        ttk.Entry(frame, textvariable=self.lng_var, width=18).grid(row=3, column=3, sticky="w", pady=4)
+
+        ttk.Label(frame, text="손상 부위 (중복 선택)").grid(row=4, column=0, columnspan=4, sticky="w", pady=(10, 4))
+        injury_frame = ttk.Frame(frame)
+        injury_frame.grid(row=5, column=0, columnspan=4, sticky="w")
+        for idx, name in enumerate(self.injuries_options):
+            v = tk.BooleanVar(value=(name == "두부/경부"))
+            self.injury_vars[name] = v
+            ttk.Checkbutton(injury_frame, text=name, variable=v).grid(row=idx // 4, column=idx % 4, padx=8, pady=3, sticky="w")
+
+        ttk.Button(frame, text="추천 실행", command=self.run_recommendation).grid(row=6, column=0, pady=(12, 8), sticky="w")
+
+        self.output = ScrolledText(frame, width=120, height=28)
+        self.output.grid(row=7, column=0, columnspan=4, sticky="nsew", pady=(6, 0))
+
+        frame.rowconfigure(7, weight=1)
+        frame.columnconfigure(1, weight=1)
+        frame.columnconfigure(3, weight=1)
+
+    def run_recommendation(self):
+        injuries = [k for k, v in self.injury_vars.items() if v.get()]
+        if not injuries:
+            messagebox.showwarning("입력 확인", "최소 1개 손상 부위를 선택하세요.")
+            return
+
+        try:
+            payload = {
+                "gcs_motor": int(self.gcs_var.get()),
+                "sbp": int(self.sbp_var.get()),
+                "rr": int(self.rr_var.get()),
+                "age": int(self.age_var.get()),
+                "lat": float(self.lat_var.get()),
+                "lng": float(self.lng_var.get()),
+                "injuries": injuries,
+            }
+        except ValueError:
+            messagebox.showerror("입력 오류", "숫자 입력 필드를 확인하세요.")
+            return
+
+        try:
+            resp = requests.post(f"{BASE_URL}/api/recommend", json=payload, timeout=30)
+            if resp.status_code != 200:
+                data = resp.json()
+                self.output.delete("1.0", tk.END)
+                self.output.insert(tk.END, f"오류: {data.get('error')}\n상세: {data.get('detail', '')}\n")
+                return
+
+            data = resp.json()
+            matched = data.get("matched", [])
+
+            self.output.delete("1.0", tk.END)
+            self.output.insert(tk.END, f"CDC 분류: {'고위험' if data['field_triage']['high_risk'] else '중등도'}\n")
+            self.output.insert(tk.END, f"검색 반경: {data.get('search_radius_km', 50)}km\n\n")
+
+            if not matched:
+                self.output.insert(tk.END, "추천 가능한 병원이 없습니다.\n")
+                self.output.insert(tk.END, "좌표/손상 조건을 조정해 다시 시도하세요.\n")
+                return
+
+            for i, h in enumerate(matched, start=1):
+                status = h.get("status", {})
+                hvec = status.get("hvec")
+                bed_text = "정보 없음" if hvec is None else f"{hvec}개"
+                self.output.insert(tk.END, f"[{i}순위] {h.get('name')}\n")
+                self.output.insert(tk.END, f"  거리: {h.get('dist_km', 0):.1f}km | 등급: {h.get('level')} | 가용병상: {bed_text}\n")
+                self.output.insert(tk.END, f"  사유: {h.get('reason')}\n\n")
+
+        except Exception as exc:
+            messagebox.showerror("요청 실패", str(exc))
+
+    def on_close(self):
+        try:
+            if self.server_proc and self.server_proc.poll() is None:
+                self.server_proc.terminate()
+        finally:
+            self.root.destroy()
+
+
+def main():
+    server_proc = start_flask_server()
+    root = tk.Tk()
+    TriageDesktopApp(root, server_proc)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
