@@ -46,6 +46,7 @@ document.getElementById('recommendBtn').addEventListener('click', async () => {
     const sbp = document.getElementById('sbp').value;
     const rr = document.getElementById('rr').value;
     const age = document.getElementById('age').value;
+    const mechanism = document.getElementById('mechanism').value;
     const lat = document.getElementById('lat').value;
     const lng = document.getElementById('lng').value;
 
@@ -58,7 +59,7 @@ document.getElementById('recommendBtn').addEventListener('click', async () => {
         return;
     }
 
-    const payload = { gcs_motor, sbp, rr, age, injuries, lat, lng };
+    const payload = { gcs_motor, sbp, rr, age, mechanism, injuries, lat, lng };
 
     const resultEl = document.getElementById('result');
     resultEl.style.display = 'block';
@@ -96,7 +97,11 @@ document.getElementById('recommendBtn').addEventListener('click', async () => {
             if (h.status.hvec !== null && h.status.hvec !== undefined && h.status.hvec >= 0) {
                 bedText = `${h.status.hvec}개`;
             }
-            html += `<div class='result-item'><strong>${rank}순위: ${h.name}</strong><br>거리 ${h.dist_km.toFixed(1)}km / 등급: ${h.level} / 가용병상: ${bedText}<br><em>${h.reason}</em></div>`;
+            const suit = h.suitability?.suitability_score ?? h.score ?? 0;
+            const spec = h.suitability?.specialty_match_score ?? 0;
+            html += `<div class='result-item'><strong>${rank}순위: ${h.name}</strong><br>`
+                 + `적합도 ${(suit * 100).toFixed(1)}점 / 거리 ${h.dist_km.toFixed(1)}km / 등급: ${h.level} / 가용병상: ${bedText}<br>`
+                 + `전문과 일치율 ${(spec * 100).toFixed(0)}%<br><em>${h.reason}</em></div>`;
         });
 
         html += `<div class='disclaimer'>⚠️ 본 시스템은 의사결정 지원 도구입니다. 최종 이송 결정은 반드시 담당 구급대원이 합니다.</div>`;

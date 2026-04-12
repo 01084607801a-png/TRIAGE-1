@@ -33,8 +33,8 @@ if CLAUDE_AVAILABLE and CLAUDE_API_KEY:
 else:
     claude_client = None
 
-APP_VERSION = "3.2.0"
-APP_VERSION_DATE = "2026-04-05"
+APP_VERSION = "3.3.0"
+APP_VERSION_DATE = "2026-04-09"
 
 bed_info_cache = {}
 BED_CACHE_TTL_SECONDS = 300
@@ -100,6 +100,38 @@ LEVEL_SCORE = {
     "권역응급의료센터":  45,
     "지역응급의료센터":  25,
     "지역응급의료기관":  10,
+}
+
+# 요청 사양: 병원 등급 점수 1.0 ~ 0.1
+LEVEL_SCORE_NORM = {
+    "권역외상센터": 1.0,
+    "지역외상센터": 0.8,
+    "권역응급의료센터": 0.6,
+    "지역응급의료센터": 0.3,
+    "지역응급의료기관": 0.1,
+}
+
+MECHANISM_RISK_MAP = {
+    "교통사고": 0.75,
+    "보행자 사고": 0.80,
+    "추락": 0.70,
+    "관통상": 0.85,
+    "둔상": 0.55,
+    "화상": 0.60,
+    "기타": 0.50,
+}
+
+INJURY_RISK_MAP = {
+    "두부/경부": 0.90,
+    "안면": 0.45,
+    "흉부": 0.85,
+    "복부/골반장기": 0.80,
+    "복부": 0.80,
+    "사지/골반골격": 0.55,
+    "상지": 0.35,
+    "하지": 0.45,
+    "척추": 0.70,
+    "체표면/기타": 0.40,
 }
 
 
@@ -264,6 +296,99 @@ def fetch_bed_info(hospital_id, hospital_name=None):
 def calc_capability_score(hospital):
     base = LEVEL_SCORE.get(hospital.get("level", ""), 10)
     return base / 100
+
+
+def calc_normalized_level_score(level: str) -> float:
+    return float(LEVEL_SCORE_NORM.get(level or "", 0.1))
+
+
+def calc_patient_severity(patient: dict, ml_prob: float = -1.0) -> float:
+    """
+    환자 측 입력(GCS, SBP, RR, 나이, 손상부위, 기전)을 0~1 중증도로 정규화
+    """
+    gcs_motor = int(patient.get("gcs_motor", 6))
+    sbp = int(patient.get("sbp", 120))
+    rr = int(patient.get("rr", 16))
+    age = int(patient.get("age", 45) or 45)
+    mechanism = str(patient.get("mechanism") or "기타")
+    injuries = patient.get("injuries") or []
+
+    gcs_risk = min(max((6 - gcs_motor) / 5, 0.0), 1.0)
+    sbp_risk = 1.0 if sbp < 90 else (0.55 if sbp < 110 else 0.20)
+    rr_risk = 1.0 if rr < 10 or rr > 29 else (0.50 if rr < 12 or rr > 24 else 0.20)
+    age_risk = 0.75 if age >= 65 else (0.45 if age >= 50 else 0.20)
+    mech_risk = MECHANISM_RISK_MAP.get(mechanism, 0.50)
+    injury_risk = max([INJURY_RISK_MAP.get(i, 0.45) for i in injuries], default=0.45)
+
+    severity = (
+        0.25 * gcs_risk
+        + 0.20 * sbp_risk
+        + 0.15 * rr_risk
+        + 0.12 * age_risk
+        + 0.13 * injury_risk
+        + 0.15 * mech_risk
+    )
+
+    # 외부 데이터(Pre_hospital_mortality) 활용 방향: 사망위험 확률을 severity에 보강
+    if ml_prob is not None and ml_prob >= 0:
+        severity = 0.70 * severity + 0.30 * float(ml_prob)
+
+    return min(max(float(severity), 0.0), 1.0)
+
+
+def calc_hospital_pair_suitability(patient: dict, hospital: dict, specialty_match_score: float, ml_prob: float):
+    """
+    환자-병원 조합 적합도 산출 (0~1)
+    입력 피처:
+      환자 측: GCS, SBP, RR, 나이, 손상부위, 기전
+      병원 측: 등급, 외상중환자실 병상 수, 전문과 일치율, 거리, 실시간 가용 병상
+    """
+    severity = calc_patient_severity(patient, ml_prob)
+
+    level_score = calc_normalized_level_score(hospital.get("level"))
+    dist_score, dist_km = calc_distance_score(
+        patient["lat"], patient["lng"], hospital["lat"], hospital["lng"]
+    )
+
+    realtime_beds = hospital.get("hvec")
+    if realtime_beds is None:
+        realtime_beds = hospital.get("bed_info", {}).get("hvec")
+    realtime_bed_score = 0.5 if realtime_beds is None else min(max(realtime_beds, 0) / 20, 1.0)
+
+    trauma_icu_beds = hospital.get("bed_info", {}).get("CRDT_ICU")
+    if trauma_icu_beds is None:
+        trauma_icu_beds = hospital.get("bed_info", {}).get("hvicc")
+    trauma_icu_score = 0.0 if trauma_icu_beds is None else min(max(trauma_icu_beds, 0) / 20, 1.0)
+
+    # 중증일수록 역량/전문과/중환자실 비중을 높이고, 경증일수록 거리 비중을 높임
+    w_level = 0.30 + 0.18 * severity
+    w_icu = 0.12 + 0.08 * severity
+    w_spec = 0.18 + 0.10 * severity
+    w_dist = 0.28 - 0.28 * severity
+    w_real = 0.12 - 0.08 * severity
+
+    suitability = (
+        w_level * level_score
+        + w_icu * trauma_icu_score
+        + w_spec * specialty_match_score
+        + w_dist * dist_score
+        + w_real * realtime_bed_score
+    )
+
+    suitability = min(max(suitability, 0.0), 1.0)
+
+    return {
+        "suitability_score": suitability,
+        "patient_severity": severity,
+        "hospital_level_score": level_score,
+        "trauma_icu_beds": trauma_icu_beds,
+        "trauma_icu_score": trauma_icu_score,
+        "specialty_match_score": specialty_match_score,
+        "distance_km": dist_km,
+        "distance_score": dist_score,
+        "realtime_available_beds": realtime_beds,
+        "realtime_bed_score": realtime_bed_score,
+    }
 
 
 def predict_rtc_probability(patient: dict) -> float:
@@ -548,6 +673,13 @@ def match_hospital(patient, hospitals):
 
         specialty_match_score = get_specialty_match_score(required_specs, h.get("services", []))
 
+        # 병상 API(외상 ICU 포함) 병합 - 실패 시 기존 필드 유지
+        bed_info_ext = fetch_bed_info(h.get("bfr_inst_id") or h.get("hpid"), h.get("name"))
+        if bed_info_ext:
+            merged_bed = dict(h.get("bed_info", {}))
+            merged_bed.update(bed_info_ext)
+            h["bed_info"] = merged_bed
+
         # ============================================================
         # Hospital API 응답에서 직접 사용 (BED API 불필요)
         # hvec = 응급실 가용병상 (음수 = 정보 없음)
@@ -598,36 +730,18 @@ def match_hospital(patient, hospitals):
             # ============================================================
             sat = 0.5
 
-        # ============================================================
-        # ML 모델 통합 앙상블 점수 계산
-        # 규칙 기반: 역량(60%) + 거리(15%) + 병상(10%) + 상태(5%)
-        # 가중치: 규칙 60% + ML 40%
-        # 근거: ML은 실제 데이터 기반 needs_rtc 확률 반영
-        #       규칙은 임상 논문 근거(CDC 2021, Kang 2022) 반영
-        # ============================================================
+        # 환자-병원 조합 적합도 계산 (요청 사양 0~1)
         ml_prob = predict_rtc_probability(patient)
 
-        if ml_prob >= 0:
-            # 규칙 기반 점수 (최종 정규화 전)
-            rule_score = (
-                0.70 * cap
-                + 0.15 * dist_score
-                + 0.10 * bed_score
-                + 0.05 * sat
-            )
-            # 앙상블: 규칙 60% + ML 40%
-            score = 0.60 * rule_score + 0.40 * ml_prob
-            ml_used = True
-        else:
-            # ML 없으면 기존 규칙 기반 100%
-            score = (
-                0.60 * cap
-                + 0.15 * dist_score
-                + 0.10 * bed_score
-                + 0.05 * sat
-                + 0.10 * specialty_match_score
-            )
-            ml_used = False
+        pair_score = calc_hospital_pair_suitability(
+            patient=patient,
+            hospital=h,
+            specialty_match_score=specialty_match_score,
+            ml_prob=ml_prob,
+        )
+        score = pair_score["suitability_score"]
+        ml_used = ml_prob >= 0
+        if not ml_used:
             ml_prob = None
 
         score = max(0, score + bed_availability_penalty)  # 음수 방지
@@ -641,6 +755,11 @@ def match_hospital(patient, hospitals):
             "required_specialties": sorted(list(required_specs)),
             "ml_rtc_probability": ml_prob,
             "ml_used_for_scoring": ml_used,
+            "suitability": pair_score,
+            "status": {
+                "hvec": h.get("hvec"),
+                "hvoc": h.get("hvoc"),
+            },
         })
 
     return sorted(results, key=lambda x: x["score"], reverse=True)[:5]
