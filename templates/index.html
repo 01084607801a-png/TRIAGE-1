@@ -2,75 +2,244 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TRIAGE-1 v3.2</title>
+    <!-- 모바일 viewport: 입력 시 줌 방지, 노치 영역 대응 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+    <title>TRIAGE-1 — 외상 병원 매칭</title>
+    <meta name="description" content="AI 기반 외상 환자 최적 병원 매칭 시스템. 30초 내 최적 병원 추천 및 HEMS 자동 판정." />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json" />
+    <meta name="theme-color" content="#16a34a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="TRIAGE-1" />
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
+
+    <!-- 아이콘 -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png" />
+    <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg" />
+
+    <!-- 스타일 -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-    <main class="container">
-        <h1>🚑 TRIAGE-1 v3.2</h1>
-        <p>외상 환자 최적 병원 매칭 시스템</p>
 
-        <div class="card">
-            <label>GCS 운동점수 (1-6)
-                <div class="gcs-buttons">
-                    <button type="button" data-value="1">1</button>
-                    <button type="button" data-value="2">2</button>
-                    <button type="button" data-value="3">3</button>
-                    <button type="button" data-value="4">4</button>
-                    <button type="button" data-value="5">5</button>
-                    <button type="button" data-value="6">6</button>
+    <!-- PWA 설치 배너 (JS에서 제어) -->
+    <div id="install-banner" class="install-banner" style="display:none;">
+        <span>📲 홈 화면에 추가하면 앱처럼 사용 가능합니다</span>
+        <div class="install-banner-btns">
+            <button id="install-btn" class="btn-install">설치</button>
+            <button id="install-dismiss" class="btn-dismiss">닫기</button>
+        </div>
+    </div>
+
+    <main class="container">
+        <header class="app-header">
+            <div class="header-title">
+                <span class="header-icon">🚑</span>
+                <div>
+                    <h1>TRIAGE-1</h1>
+                    <p class="header-sub">외상 환자 병원 매칭 시스템</p>
+                </div>
+            </div>
+            <span id="network-status" class="network-badge online">● 온라인</span>
+        </header>
+
+        <!-- ── 환자 정보 입력 ── -->
+        <section class="card" id="input-card">
+
+            <!-- GCS (일반인용 행동 기준 선택) -->
+            <div class="field-group">
+                <label class="field-label">
+                    의식 상태 (GCS 운동점수)
+                    <span class="field-hint">가장 중요 — 환자 반응을 보고 선택</span>
+                </label>
+                <div class="gcs-list" role="group" aria-label="GCS Motor Score">
+                    <button type="button" class="gcs-option active" data-value="6">
+                        <span class="gcs-num">6</span>
+                        <span class="gcs-opt-text"><strong>명령에 따름</strong>"손을 들어보세요"라고 하면 그대로 행동함</span>
+                    </button>
+                    <button type="button" class="gcs-option" data-value="5">
+                        <span class="gcs-num">5</span>
+                        <span class="gcs-opt-text"><strong>통증 부위 파악</strong>아픈 곳을 누르면 그 부위로 손이 향함</span>
+                    </button>
+                    <button type="button" class="gcs-option" data-value="4">
+                        <span class="gcs-num">4</span>
+                        <span class="gcs-opt-text"><strong>통증에 회피</strong>아프게 하면 그 부위에서 몸·팔을 피함</span>
+                    </button>
+                    <button type="button" class="gcs-option" data-value="3">
+                        <span class="gcs-num">3</span>
+                        <span class="gcs-opt-text"><strong>비정상 굴곡</strong>아프게 하면 팔이 안쪽으로 부자연스럽게 굽음</span>
+                    </button>
+                    <button type="button" class="gcs-option" data-value="2">
+                        <span class="gcs-num">2</span>
+                        <span class="gcs-opt-text"><strong>신전 반응</strong>아프게 하면 팔다리가 뻣뻣하게 바깥으로 펴짐</span>
+                    </button>
+                    <button type="button" class="gcs-option" data-value="1">
+                        <span class="gcs-num">1</span>
+                        <span class="gcs-opt-text"><strong>반응 없음</strong>어떤 자극에도 전혀 움직이지 않음</span>
+                    </button>
                 </div>
                 <input id="gcs_motor" type="hidden" value="6">
-            </label>
-
-            <div class="vitals">
-                <label>SBP (mmHg)<input id="sbp" type="number" min="20" max="300" value="110"></label>
-                <label>RR (/분)<input id="rr" type="number" min="0" max="80" value="18"></label>
+                <div id="gcs-redwarn" class="gcs-redwarn" style="display:none;">
+                    🔴 6점 미만 — 의식 변화는 가장 위험한 신호로 <strong>최우선 중증(RED)</strong>으로 분류됩니다
+                </div>
             </div>
 
-            <label>손상 기전
-                <select id="mechanism">
-                    <option value="교통사고" selected>교통사고</option>
-                    <option value="보행자 사고">보행자 사고</option>
-                    <option value="추락">추락</option>
-                    <option value="관통상">관통상</option>
-                    <option value="둔상">둔상</option>
-                    <option value="화상">화상</option>
+            <!-- 활력징후 -->
+            <div class="vitals-row">
+                <div class="field-group">
+                    <label class="field-label" for="sbp">
+                        수축기 혈압
+                        <span class="field-hint">mmHg</span>
+                    </label>
+                    <input id="sbp" type="number" inputmode="numeric" min="20" max="300" value="110" class="vital-input">
+                </div>
+                <div class="field-group">
+                    <label class="field-label" for="rr">
+                        호흡수
+                        <span class="field-hint">/분</span>
+                    </label>
+                    <input id="rr" type="number" inputmode="numeric" min="0" max="80" value="18" class="vital-input">
+                </div>
+                <div class="field-group">
+                    <label class="field-label" for="hr">
+                        맥박
+                        <span class="field-hint">/분 (선택)</span>
+                    </label>
+                    <input id="hr" type="number" inputmode="numeric" min="0" max="250" placeholder="--" class="vital-input">
+                </div>
+            </div>
+
+            <!-- 손상 기전 -->
+            <div class="field-group">
+                <label class="field-label" for="mechanism">손상 기전</label>
+                <select id="mechanism" class="select-input">
+                    <option value="교통사고" selected>🚗 교통사고</option>
+                    <option value="보행자 사고">🚶 보행자 사고</option>
+                    <option value="추락">⬇️ 추락</option>
+                    <option value="관통상">🔪 관통상</option>
+                    <option value="둔상">💥 둔상</option>
+                    <option value="화상">🔥 화상</option>
                     <option value="기타">기타</option>
                 </select>
-            </label>
+            </div>
 
-            <div class="injury-section">
-                <label>손상 부위 (중복 선택 가능)</label>
+            <!-- 손상 부위 -->
+            <div class="field-group">
+                <label class="field-label">손상 부위 <span class="field-hint">복수 선택 가능</span></label>
                 <div class="injury-grid">
-                    <label><input type="checkbox" value="두부/경부"> 두부/경부</label>
-                    <label><input type="checkbox" value="안면"> 안면</label>
-                    <label><input type="checkbox" value="흉부"> 흉부</label>
-                    <label><input type="checkbox" value="복부"> 복부</label>
-                    <label><input type="checkbox" value="척추"> 척추</label>
-                    <label><input type="checkbox" value="상지"> 상지</label>
-                    <label><input type="checkbox" value="하지"> 하지</label>
+                    <label class="injury-chip"><input type="checkbox" value="두부/경부"> 두부/경부</label>
+                    <label class="injury-chip"><input type="checkbox" value="안면"> 안면</label>
+                    <label class="injury-chip"><input type="checkbox" value="흉부"> 흉부</label>
+                    <label class="injury-chip"><input type="checkbox" value="복부"> 복부</label>
+                    <label class="injury-chip"><input type="checkbox" value="척추"> 척추</label>
+                    <label class="injury-chip"><input type="checkbox" value="상지"> 상지</label>
+                    <label class="injury-chip"><input type="checkbox" value="하지"> 하지</label>
+                    <label class="injury-chip"><input type="checkbox" value="사지/골반골격"> 골반/골격</label>
                 </div>
             </div>
 
-            <label><input id="age65" type="checkbox"> 65세 이상</label>
-            <input id="age" type="hidden" value="45">
-
-            <div class="location-section">
-                <label id="location-status">📍 위치 자동 감지 중...</label>
-                <div class="location-inputs">
-                    <label>위도<input id="lat" type="number" step="0.000001" value="35.17"></label>
-                    <label>경도<input id="lng" type="number" step="0.000001" value="126.92"></label>
-                </div>
+            <!-- 나이 -->
+            <div class="field-group">
+                <label class="age-toggle">
+                    <input id="age65" type="checkbox">
+                    <span class="toggle-track"></span>
+                    <span class="toggle-label">65세 이상 (SBP 기준 110mmHg 적용)</span>
+                </label>
+                <input id="age" type="hidden" value="45">
             </div>
 
-            <button id="recommendBtn">병원 추천받기</button>
-        </div>
+            <!-- 위치 -->
+            <div class="field-group">
+                <label class="field-label">📍 환자 위치</label>
+                <div id="location-status" class="location-status">위치 감지 중...</div>
+                <div class="address-row">
+                    <input id="address" type="text" inputmode="search" placeholder="주소 또는 장소명 검색" autocomplete="off" class="address-input">
+                    <button id="addressSearchBtn" type="button" class="btn-secondary">검색</button>
+                </div>
+                <button id="useCurrentLocationBtn" type="button" class="btn-gps">
+                    🎯 현재 위치 사용
+                </button>
+                <div class="coords-row">
+                    <label class="field-label" style="flex:1;">위도<input id="lat" type="number" step="0.000001" value="35.17" class="coord-input"></label>
+                    <label class="field-label" style="flex:1;">경도<input id="lng" type="number" step="0.000001" value="126.92" class="coord-input"></label>
+                </div>
+                <div id="map" class="map"></div>
+            </div>
 
-        <div id="result" class="card" style="display:none;"></div>
+            <button id="recommendBtn" class="btn-primary">
+                <span id="btn-text">🏥 병원 추천받기</span>
+                <span id="btn-spinner" class="spinner" style="display:none;"></span>
+            </button>
+        </section>
+
+        <!-- ── 결과 영역 ── -->
+        <section id="patient-summary" class="card" style="display:none;"></section>
+        <section id="result" class="card" style="display:none;"></section>
+
+        <p class="disclaimer">
+            ⚠️ 본 시스템은 의사결정 보조 도구입니다. 최종 판단은 의료진 및 구급대원이 합니다.
+        </p>
     </main>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="/static/script.js"></script>
+    <script>
+        // ── Service Worker 등록 ────────────────────
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(reg => console.log('[SW] 등록 완료:', reg.scope))
+                    .catch(err => console.warn('[SW] 등록 실패:', err));
+            });
+        }
+
+        // ── PWA 설치 배너 ──────────────────────────
+        let deferredPrompt = null;
+        const banner = document.getElementById('install-banner');
+        const installBtn = document.getElementById('install-btn');
+        const dismissBtn = document.getElementById('install-dismiss');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            banner.style.display = 'flex';
+        });
+
+        installBtn.addEventListener('click', async () => {
+            banner.style.display = 'none';
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('[PWA] 설치 결과:', outcome);
+                deferredPrompt = null;
+            }
+        });
+
+        dismissBtn.addEventListener('click', () => {
+            banner.style.display = 'none';
+        });
+
+        // ── 네트워크 상태 표시 ─────────────────────
+        const networkBadge = document.getElementById('network-status');
+        function updateNetworkStatus() {
+            if (navigator.onLine) {
+                networkBadge.textContent = '● 온라인';
+                networkBadge.className = 'network-badge online';
+            } else {
+                networkBadge.textContent = '● 오프라인';
+                networkBadge.className = 'network-badge offline';
+            }
+        }
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+        updateNetworkStatus();
+    </script>
 </body>
 </html>

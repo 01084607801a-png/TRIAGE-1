@@ -1,0 +1,7 @@
+{
+  "cv_f1_macro": 0.8493149137462886,
+  "rule_sensitivity": 0.7411444141689373,
+  "ml_sensitivity": 0.8310626702997275,
+  "occult_n": 95,
+  "ml_occult_recovery": 0.3473684210526316
+}

@@ -500,6 +500,56 @@ def main():
         pickle.dump(model_data, f)
     print(f'\n[모델] {pkl_path} 저장 완료')
 
+    # 10) SHAP 분석 및 시각화 (TreeExplainer 사용)
+    try:
+        import shap
+        # background dataset: use a sample of training data
+        background = X_train.sample(n=min(100, len(X_train)), random_state=42)
+        explainer = shap.TreeExplainer(best_model, data=background)
+
+        # summary plot (beeswarm)
+        shap_values = explainer.shap_values(X_test)
+        plt.figure(figsize=(10, 6))
+        try:
+            shap.summary_plot(shap_values, X_test, show=False)
+        except TypeError:
+            # newer shap may return Explanation objects
+            shap.summary_plot(shap_values, X_test, show=False)
+        summary_path = os.path.join(MODELS_DIR, 'shap_summary.png')
+        plt.savefig(summary_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        print(f'[SHAP] {summary_path} 저장 완료')
+
+        # feature importance (bar)
+        plt.figure(figsize=(8, 5))
+        try:
+            shap.plots.bar(shap.Explanation(values=shap_values if not isinstance(shap_values, list) else shap_values[1],
+                                           base_values=None,
+                                           data=X_test), show=False)
+            bar_path = os.path.join(MODELS_DIR, 'shap_importance.png')
+            plt.savefig(bar_path, dpi=150, bbox_inches='tight')
+            plt.close()
+            print(f'[SHAP] {bar_path} 저장 완료')
+        except Exception:
+            # fallback: use feature importances
+            importances = best_model.feature_importances_
+            idx = np.argsort(importances)[::-1]
+            labels = [FEATURE_LABELS_KO[i] for i in idx]
+            vals = importances[idx]
+            fig, ax = plt.subplots(figsize=(8, 5))
+            ax.barh(labels[::-1], vals[::-1], color='#2E86AB')
+            ax.set_title('SHAP 대체: Feature Importances')
+            plt.tight_layout()
+            bar_path = os.path.join(MODELS_DIR, 'shap_importance.png')
+            fig.savefig(bar_path, dpi=150, bbox_inches='tight')
+            plt.close()
+            print(f'[SHAP] 대체 그래프 {bar_path} 저장 완료')
+
+    except ImportError:
+        print('[SHAP] shap 패키지가 설치되어 있지 않습니다. 설치: pip install shap')
+    except Exception as e:
+        print(f'[SHAP_ERROR] {e}')
+
     # 9) 최종 요약 표 출력
     print_final_summary(test_results)
 

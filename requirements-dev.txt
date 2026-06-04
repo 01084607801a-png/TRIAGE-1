@@ -1,0 +1,15 @@
+# ── 개발/학습/데스크톱 전용 의존성 (서버 배포엔 불필요) ──
+# 로컬에서: pip install -r requirements-dev.txt
+
+-r requirements.txt
+
+# 모델 학습 · 데이터 생성 · 시각화
+pandas>=2.2.0
+matplotlib>=3.8.0
+xgboost>=2.1.0
+shap>=0.42.0
+
+# 데스크톱 앱 / 터널 / 테스트
+pyngrok>=5.1.0
+tkintermapview
+pytest

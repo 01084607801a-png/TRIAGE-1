@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 화이트 베이스 + 그린 테두리 (의료/구급) -->
+  <rect width="512" height="512" rx="96" fill="#ffffff"/>
+  <rect x="14" y="14" width="484" height="484" rx="84" fill="none" stroke="#16a34a" stroke-width="20"/>
+  <!-- 그린 의료 십자 -->
+  <rect x="216" y="120" width="80" height="272" rx="14" fill="#16a34a"/>
+  <rect x="120" y="216" width="272" height="80" rx="14" fill="#16a34a"/>
+  <!-- 레드 응급 점 -->
+  <circle cx="384" cy="128" r="44" fill="#dc2626"/>
+</svg>

@@ -1,16 +1,22 @@
 services:
   - type: web
-    name: triage-qa
+    name: triage-1
     env: python
-    region: singapore
+    region: singapore       # 한국과 가장 가까운 Render 리전
+    plan: free              # 무료 플랜 (슬립 있음) | starter 이상 권장
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn app:app"
+    startCommand: "gunicorn app:app --workers 2 --timeout 120 --bind 0.0.0.0:$PORT"
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.7
+        value: "3.11.7"
       - key: NEMC_HOSPITAL_API_KEY
-        sync: false
+        sync: false          # Render 대시보드에서 직접 입력
       - key: NEMC_BED_API_KEY
         sync: false
       - key: CLAUDE_API_KEY
         sync: false
+      - key: SECRET_KEY
+        generateValue: true  # Render가 자동 생성
+      - key: FLASK_ENV
+        value: production

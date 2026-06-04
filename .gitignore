@@ -65,6 +65,9 @@ db.sqlite3-journal
 instance/
 .webassets-cache
 
+# Local environment variables
+.env
+
 # Scrapy stuff:
 .scrapy
 
@@ -150,3 +153,5 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+# 에디터/에이전트 로컬 설정
+.claude/

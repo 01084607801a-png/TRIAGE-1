@@ -1,25 +1,649 @@
-* {box-sizing: border-box;}
-body {margin:0;font-family: 'Segoe UI', Roboto, Arial, sans-serif;background:#f4f8fb;color:#1f2937;}
-.container{max-width:480px;margin:auto;padding:12px;}
-h1{font-size:1.8rem;margin-bottom:.2rem;}
-.card{background:#fff;border:1px solid #dbe2eb;border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.06);margin-top:12px;}
-label{display:block;margin-bottom:8px;font-size:0.95rem;}
-input[type=number], .injury-group, .gcs-buttons, .injury-grid, .location-inputs{width:100%;margin-top:4px;}
-.gcs-buttons{display:flex;gap:4px;margin-bottom:12px;}
-.gcs-buttons button{flex:1;padding:8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;font-size:1rem;}
-.gcs-buttons button.active{background:#2563eb;color:#fff;}
-.vitals{display:flex;gap:8px;}
-.vitals label{flex:1;margin-bottom:0;}
-.injury-section{margin:12px 0;}
-.injury-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.injury-grid label{display:flex;align-items:center;margin:0;padding:8px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;}
-.injury-grid input{margin-right:6px;}
-.location-section{margin:12px 0;}
-#location-status{font-size:0.9rem;color:#059669;margin-bottom:8px;}
-.location-inputs{display:flex;gap:8px;}
-.location-inputs label{flex:1;margin-bottom:0;}
-button{width:100%;padding:12px;background:#2563eb;color:#fff;font-weight:700;border:none;border-radius:10px;font-size:1.05rem;margin-top:10px;}
-button:active{transform:translateY(1px);}
-.result-item{margin-bottom:10px;padding:10px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;}
-small{font-size:0.85rem;color:#4b5563;}
-.disclaimer{margin-top:16px;padding:12px;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;font-size:0.9rem;color:#92400e;}
+/* ═══════════════════════════════════════════
+   TRIAGE-1 · 모바일 우선 PWA 스타일
+   의료/구급 테마 — 화이트 베이스 + 그린(메인) + 레드(응급)
+   ═══════════════════════════════════════════ */
+
+/* ── 변수 ── */
+:root {
+    --green:      #16a34a;   /* 메인 (구급/의료) */
+    --green-dark: #15803d;
+    --green-soft: #f0fdf4;   /* 선택 배경 틴트 */
+    --red:        #dc2626;   /* 응급 강조 */
+    --red-dark:   #b91c1c;
+    --red-soft:   #fef2f2;
+    --amber:      #d97706;   /* YELLOW 트리아지 */
+
+    --gray-50:   #f8fafb;
+    --gray-100:  #f1f5f4;
+    --gray-200:  #e3eae7;
+    --gray-400:  #94a3a0;
+    --gray-600:  #4b5a55;
+    --gray-800:  #1f2a27;
+    --white:     #ffffff;
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+
+    /* 노치/홈바 대응 */
+    --safe-top:    env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── 기본 ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+    font-size: 16px; /* 입력 포커스 줌 방지 핵심 */
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    background: #eef5f0;            /* 아주 옅은 그린-화이트 */
+    color: var(--gray-800);
+    line-height: 1.5;
+    padding-bottom: calc(24px + var(--safe-bottom));
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ── 레이아웃 ── */
+.container {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 0 12px;
+    padding-top: calc(8px + var(--safe-top));
+}
+
+/* ── 헤더 ── */
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--white);
+    color: var(--gray-800);
+    border-radius: var(--radius-lg);
+    margin-bottom: 12px;
+    border: 1px solid var(--gray-200);
+    border-top: 4px solid var(--green);   /* 상단 그린 라인 = 의료 아이덴티티 */
+    box-shadow: 0 2px 12px rgba(22,163,74,.10);
+}
+
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.header-icon {
+    font-size: 1.9rem;
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--red-soft);
+    border-radius: 12px;
+}
+
+.app-header h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: -.5px;
+    color: var(--green-dark);
+}
+.header-sub {
+    font-size: 0.75rem;
+    color: var(--gray-600);
+    margin-top: 1px;
+}
+
+/* ── 네트워크 배지 ── */
+.network-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.network-badge.online  { background: var(--green-soft); color: var(--green-dark); }
+.network-badge.offline { background: var(--red); color: #fff; }
+
+/* ── 카드 ── */
+.card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    border: 1px solid var(--gray-200);
+    box-shadow: 0 2px 10px rgba(31,42,39,.05);
+    margin-bottom: 12px;
+}
+
+/* ── 필드 ── */
+.field-group { margin-bottom: 16px; }
+.field-group:last-child { margin-bottom: 0; }
+
+.field-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 6px;
+}
+.field-hint {
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--gray-400);
+    margin-left: 6px;
+}
+
+/* ── 입력 공통 ── */
+input[type=number],
+input[type=text],
+.select-input,
+.vital-input,
+.coord-input,
+.address-input {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 1rem;          /* 줌 방지 */
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    background: var(--gray-50);
+    color: var(--gray-800);
+    -webkit-appearance: none;
+    appearance: none;
+    transition: border-color .15s, background .15s;
+}
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--green);
+    background: var(--white);
+    box-shadow: 0 0 0 3px rgba(22,163,74,.12);
+}
+
+/* ── 활력징후 3열 ── */
+.vitals-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+/* ── GCS 행동 기준 세로 선택 ── */
+.gcs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.gcs-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+    min-height: 56px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    background: var(--gray-50);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .12s, border-color .12s;
+}
+.gcs-num {
+    flex-shrink: 0;
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; font-weight: 800;
+    color: var(--gray-600);
+    background: var(--white);
+    border: 1.5px solid var(--gray-200);
+    border-radius: 50%;
+}
+.gcs-opt-text {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8rem;
+    color: var(--gray-600);
+    line-height: 1.35;
+}
+.gcs-opt-text strong {
+    font-size: 0.92rem;
+    color: var(--gray-800);
+    font-weight: 700;
+}
+.gcs-option.active {
+    background: var(--green-soft);
+    border-color: var(--green);
+}
+.gcs-option.active .gcs-num {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+}
+.gcs-option.active .gcs-opt-text strong { color: var(--green-dark); }
+.gcs-option:active { transform: scale(.99); }
+
+/* ── GCS 6점 미만 RED 경고 ── */
+.gcs-redwarn {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 8px;
+    padding: 9px 12px;
+    background: var(--red-soft);
+    border: 1.5px solid var(--red);
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    color: var(--red-dark);
+    line-height: 1.4;
+}
+
+/* ── 손상 부위 칩 ── */
+.injury-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.injury-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 12px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    background: var(--gray-50);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .1s, border-color .1s;
+    min-height: 46px;
+}
+.injury-chip input[type=checkbox] {
+    width: 18px; height: 18px;
+    accent-color: var(--green);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.injury-chip:has(input:checked) {
+    background: var(--green-soft);
+    border-color: var(--green);
+    color: var(--green-dark);
+}
+
+/* ── 나이 토글 ── */
+.age-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.age-toggle input[type=checkbox] { display: none; }
+.toggle-track {
+    width: 44px; height: 24px;
+    background: var(--gray-200);
+    border-radius: 12px;
+    flex-shrink: 0;
+    position: relative;
+    transition: background .2s;
+}
+.toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 18px; height: 18px;
+    background: var(--white);
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    transition: transform .2s;
+}
+.age-toggle input:checked + .toggle-track { background: var(--green); }
+.age-toggle input:checked + .toggle-track::after { transform: translateX(20px); }
+.toggle-label { font-size: 0.88rem; color: var(--gray-600); }
+
+/* ── 위치 ── */
+.location-status {
+    font-size: 0.88rem;
+    color: var(--green-dark);
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.address-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.address-input { flex: 1; }
+.coords-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.btn-gps {
+    width: 100%;
+    padding: 11px;
+    background: var(--green-soft);
+    color: var(--green-dark);
+    border: 1.5px solid var(--green);
+    border-radius: var(--radius-sm);
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.btn-gps:active { background: #dcfce7; }
+
+/* ── 지도 ── */
+.map {
+    height: 240px;
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--gray-200);
+    margin-top: 10px;
+    overflow: hidden;
+}
+
+/* ── 버튼 ── */
+.btn-primary {
+    width: 100%;
+    padding: 16px;
+    background: var(--green);
+    color: var(--white);
+    font-size: 1.1rem;
+    font-weight: 700;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+    box-shadow: 0 4px 14px rgba(22,163,74,.35);
+    -webkit-tap-highlight-color: transparent;
+    transition: background .15s, box-shadow .15s, transform .1s;
+    min-height: 54px;
+}
+.btn-primary:active { background: var(--green-dark); transform: scale(.99); }
+.btn-primary:disabled { background: var(--gray-400); box-shadow: none; cursor: not-allowed; }
+
+.btn-secondary {
+    padding: 12px 16px;
+    background: var(--green);
+    color: var(--white);
+    font-size: 0.92rem;
+    font-weight: 700;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 46px;
+}
+.btn-secondary:active { background: var(--green-dark); }
+
+/* ── 로딩 스피너 ── */
+.spinner {
+    width: 20px; height: 20px;
+    border: 2.5px solid rgba(255,255,255,.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── PWA 설치 배너 ── */
+.install-banner {
+    position: fixed;
+    bottom: calc(16px + var(--safe-bottom));
+    left: 12px; right: 12px;
+    background: var(--white);
+    color: var(--gray-800);
+    border: 1px solid var(--gray-200);
+    border-left: 4px solid var(--green);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 9999;
+    box-shadow: 0 8px 30px rgba(31,42,39,.18);
+    font-size: 0.9rem;
+}
+.install-banner-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+.btn-install {
+    padding: 8px 20px;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    min-height: 38px;
+}
+.btn-dismiss {
+    padding: 8px 16px;
+    background: transparent;
+    color: var(--gray-600);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    cursor: pointer;
+    min-height: 38px;
+}
+
+/* ── 결과 카드 ── */
+#patient-summary h2 { font-size: 1rem; margin-bottom: 10px; color: var(--green-dark); }
+
+.result-item {
+    padding: 14px;
+    border: 1px solid var(--gray-200);
+    border-left: 4px solid var(--green);
+    border-radius: var(--radius-md);
+    background: var(--white);
+    margin-bottom: 10px;
+}
+.result-rank {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: var(--green-dark);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+.result-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 4px 0;
+    color: var(--gray-800);
+}
+.result-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-right: 4px;
+}
+.badge-red    { background: var(--red-soft);  color: var(--red); }
+.badge-yellow { background: #fef3c7;          color: var(--amber); }
+.badge-blue   { background: #ecfdf5;          color: var(--green-dark); }   /* 정보 칩 (그린 계열) */
+.badge-green  { background: var(--green-soft); color: var(--green-dark); }
+
+.result-meta {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    margin-top: 6px;
+    line-height: 1.6;
+}
+.result-reason {
+    margin-top: 8px;
+    padding: 10px;
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    color: var(--gray-800);
+    line-height: 1.6;
+    border: 1px solid var(--gray-200);
+}
+
+/* ── 결과: 순위 헤더 ── */
+.result-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.result-head .result-rank { margin: 0; }
+.hems-pill {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #fff;
+    background: var(--red);
+    padding: 3px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+/* ── 결과: 핵심 스탯 3분할 ── */
+.stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin: 10px 0;
+}
+.stat-cell {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    padding: 8px 6px;
+    text-align: center;
+}
+.stat-icon { font-size: 1rem; }
+.stat-val {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--gray-800);
+    line-height: 1.2;
+    margin-top: 2px;
+}
+.stat-val.muted { color: var(--gray-400); font-size: .82rem; font-weight: 700; }
+.stat-sub { font-size: 0.68rem; color: var(--gray-400); }
+.stat-label { font-size: 0.7rem; color: var(--gray-600); margin-top: 2px; }
+
+/* ── 결과: 전문과 매칭 행 ── */
+.spec-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: var(--gray-600);
+    margin: 8px 0;
+}
+.spec-tag {
+    font-size: 0.74rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+.spec-have { background: var(--green-soft); color: var(--green-dark); }
+.spec-miss { background: var(--red-soft);  color: var(--red); }
+
+/* ── 결과: 장비 가용 칩 (CT/MRI/인공호흡기) ── */
+.equip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0;
+}
+.equip-tag {
+    font-size: 0.74rem;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 20px;
+    background: var(--green-soft);
+    color: var(--green-dark);
+    border: 1px solid #bbf7d0;
+}
+
+/* ── 결과: 병상 데이터 부재 안내 ── */
+.bed-warning {
+    display: flex;
+    gap: 6px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-size: 0.78rem;
+    color: #92400e;
+    margin: 8px 0;
+    line-height: 1.45;
+}
+
+/* ── 결과: AI(XAI) 설명 박스 ── */
+.xai-box {
+    margin-top: 8px;
+    background: var(--green-soft);
+    border: 1px solid #bbf7d0;
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+}
+.xai-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--green-dark);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    margin-bottom: 4px;
+}
+.xai-text { font-size: 0.86rem; color: var(--gray-800); line-height: 1.6; }
+
+/* ── HEMS / 응급 경고 (레드 강조) ── */
+.hems-alert {
+    background: var(--red-soft);
+    border: 1.5px solid var(--red);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+    color: var(--red-dark);
+}
+
+/* ── 면책 ── */
+.disclaimer {
+    font-size: 0.8rem;
+    color: var(--gray-400);
+    text-align: center;
+    padding: 16px 8px;
+    line-height: 1.6;
+}
+.error-msg {
+    color: var(--red);
+    text-align: center;
+    padding: 16px;
+    font-weight: 600;
+}
+
+/* ── select 커스텀 화살표 ── */
+.select-input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2316a34a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+    cursor: pointer;
+}
+
+/* ── small / 보조 텍스트 ── */
+small { font-size: 0.82rem; color: var(--gray-600); }
+
+/* ── 태블릿 이상 여백 ── */
+@media (min-width: 540px) {
+    .container { padding: 12px 16px; padding-top: calc(12px + var(--safe-top)); }
+    .card { padding: 20px; }
+}

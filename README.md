@@ -40,16 +40,41 @@ $env:CLAUDE_API_KEY = "sk-ant-YOUR_CLAUDE_KEY_HERE"
 1. 프로젝트 루트에 `.env` 파일 생성
 2. `NEMC_HOSPITAL_API_KEY=your_hospital_api_key` 입력
 3. `NEMC_BED_API_KEY=your_bed_api_key` 입력
-4. `CLAUDE_API_KEY=your_claude_key` 입력 (선택)
+4. `CLAUDE_API_KEY=your_claude_api_key` 입력 (선택)
 5. `.gitignore`에 `.env` 추가됨 (이미 설정)
+
+### 예시 환경 파일
+- `.env.example` 파일을 복사하여 `.env`로 이름을 바꾸고 실제 키를 채우세요.
 
 ## 실행
 
 ### 로컬 개발 환경
 ```powershell
+python run_local.py
+```
+- 자동으로 기본 브라우저를 엽니다.
+- 주소 검색과 지도 클릭으로 출발 지점을 쉽게 선택할 수 있습니다.
+- 경로 기반 거리/소요시간은 OSRM을 통해 조회합니다.
+- 로컬 네트워크에서 접속하려면 `http://<your-ip>:5000`을 사용하세요.
+
+### 직접 실행도 가능
+```powershell
 python app.py
 ```
-browser: `http://localhost:5000` 접속
+- `http://localhost:5000` 접속
+
+### 공개 테스트 (ngrok)
+```powershell
+python run_public.py
+```
+- `ngrok`이 자동으로 공개 URL을 생성합니다.
+- 필요 시 `NGROK_AUTHTOKEN` 환경변수를 설정하면 안정적인 토큰 기반 인증을 사용할 수 있습니다.
+- 무료 ngrok는 무작위 URL을 발급하며, `www.aitriage.com`과 같은 고정 도메인은 지원하지 않습니다.
+
+### 실제 도메인 연결
+- `www.aitriage.com` 같은 도메인을 쓰려면 실제 호스팅 서비스에 배포하고 DNS를 연결해야 합니다.
+- 예: Heroku, AWS Elastic Beanstalk, Google Cloud Run, Docker + VPS 등에 배포 후 도메인을 매핑합니다.
+- ngrok로 고정 도메인을 쓰려면 ngrok 유료 플랜에서 커스텀 도메인 기능을 사용해야 합니다.
 
 ### 웹 배포 (외부 접근 가능)
 실제 운영 환경에서는 클라우드 배포 권장:

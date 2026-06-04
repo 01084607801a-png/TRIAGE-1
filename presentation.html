@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TRIAGE-1 — 발표</title>
+<style>
+  :root{
+    --green:#16a34a; --green-dark:#15803d; --green-soft:#f0fdf4;
+    --red:#dc2626; --red-dark:#b91c1c; --red-soft:#fef2f2;
+    --ink:#0f1f1a; --gray:#5b6b66; --line:#e3eae7; --bg:#f4f8f6; --white:#fff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:-apple-system,'Segoe UI','Malgun Gothic',Roboto,sans-serif;
+    background:#0b1411;color:var(--ink);overflow:hidden;-webkit-font-smoothing:antialiased;
+  }
+  #stage{position:fixed;inset:0;}
+  .slide{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    justify-content:center;align-items:center;padding:6vh 8vw;
+    opacity:0;visibility:hidden;transform:translateY(24px);
+    transition:opacity .5s ease,transform .5s ease;background:var(--bg);text-align:center;
+  }
+  .slide.active{opacity:1;visibility:visible;transform:none;}
+  .slide.dark{background:radial-gradient(120% 120% at 50% 25%,#13251e 0%,#0b1411 70%);color:#eaf3ef;}
+  .slide.green{background:linear-gradient(160deg,#16a34a,#0f7a39);color:#fff;}
+
+  .eyebrow{font-size:clamp(.8rem,1.6vw,1.1rem);font-weight:800;letter-spacing:.24em;
+    text-transform:uppercase;color:var(--green);margin-bottom:1.6rem;}
+  .dark .eyebrow{color:#5fe39a;} .green .eyebrow{color:#d6ffe6;}
+
+  h1{font-size:clamp(2.6rem,9vw,7rem);font-weight:900;line-height:1.05;letter-spacing:-.03em;}
+  h2{font-size:clamp(1.9rem,5vw,3.6rem);font-weight:900;line-height:1.12;letter-spacing:-.02em;}
+  .accent{color:var(--green);} .dark .accent{color:#5fe39a;} .green .accent{color:#fff;}
+  .accent-red{color:var(--red);} .dark .accent-red{color:#ff8a8a;}
+
+  /* 비주얼 요소 */
+  .hero-ic{font-size:clamp(4.5rem,15vw,11rem);line-height:1;filter:drop-shadow(0 10px 26px rgba(0,0,0,.3));}
+  .pulse{animation:pulse 1.8s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.07);}}
+  .qmark{font-size:clamp(4rem,15vw,11rem);font-weight:900;line-height:1;color:#5fe39a;margin-top:.5rem;}
+  .num-hero{font-size:clamp(5rem,22vw,16rem);font-weight:900;line-height:.85;letter-spacing:-.05em;color:var(--green);}
+  .dark .num-hero{color:#5fe39a;} .green .num-hero{color:#fff;}
+  .num-hero u{text-decoration:none;font-size:.26em;font-weight:800;color:var(--gray);display:block;letter-spacing:.12em;margin-top:.5rem;}
+  .green .num-hero u{color:#eafff2;}
+  .ecg{width:min(560px,82vw);height:64px;color:var(--green);margin-top:2.4rem;}
+  .dark .ecg{color:#5fe39a;} .green .ecg{color:#eafff2;}
+  .ecg polyline{fill:none;stroke:currentColor;stroke-width:3;stroke-linejoin:round;stroke-linecap:round;
+    stroke-dasharray:1600;stroke-dashoffset:1600;}
+  .active .ecg polyline{animation:draw 2.4s ease forwards;}
+  @keyframes draw{to{stroke-dashoffset:0;}}
+  .tagword{font-size:clamp(1.1rem,2.6vw,2rem);font-weight:800;letter-spacing:.02em;margin-top:1.4rem;color:#eafff2;}
+
+  .pill-row{display:flex;flex-wrap:wrap;gap:.7rem;justify-content:center;margin-top:2.2rem;}
+  .pill{font-size:clamp(.9rem,1.8vw,1.25rem);font-weight:800;border-radius:30px;padding:.6rem 1.3rem;
+    background:#fff;border:1.5px solid var(--line);color:var(--ink);}
+  .dark .pill{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16);color:#eaf3ef;}
+
+  /* 통계 */
+  .stat-row{display:flex;gap:5vw;flex-wrap:wrap;justify-content:center;margin-top:2.8rem;}
+  .stat .num{font-size:clamp(2.8rem,8vw,5.5rem);font-weight:900;color:var(--green);line-height:1;}
+  .stat .lbl{font-size:clamp(.85rem,1.6vw,1.15rem);color:var(--gray);margin-top:.6rem;font-weight:600;}
+
+  /* 흐름 */
+  .flow{display:flex;align-items:stretch;gap:.6rem;flex-wrap:wrap;justify-content:center;margin-top:3rem;}
+  .flow .step{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:1.4rem 1.5rem;
+    font-weight:900;font-size:clamp(1rem,2vw,1.5rem);min-width:140px;box-shadow:0 8px 22px rgba(15,31,26,.06);}
+  .flow .step .si{font-size:1.8rem;display:block;margin-bottom:.4rem;}
+  .flow .step small{display:block;font-weight:700;color:var(--gray);font-size:.8rem;margin-top:.3rem;}
+  .flow .arrow{display:flex;align-items:center;color:var(--green);font-size:2rem;font-weight:900;}
+
+  /* 카드 */
+  .grid{display:grid;gap:1.2rem;margin-top:2.6rem;width:100%;max-width:1120px;}
+  .g3{grid-template-columns:repeat(3,1fr);} .g4{grid-template-columns:repeat(4,1fr);}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:1.6rem 1.4rem;
+    text-align:center;box-shadow:0 10px 30px rgba(15,31,26,.06);transform:translateY(16px);opacity:0;}
+  .active .card{animation:rise .5s ease forwards;}
+  .active .card:nth-child(2){animation-delay:.07s;} .active .card:nth-child(3){animation-delay:.14s;}
+  .active .card:nth-child(4){animation-delay:.21s;} .active .card:nth-child(5){animation-delay:.28s;}
+  .active .card:nth-child(6){animation-delay:.35s;}
+  @keyframes rise{to{transform:none;opacity:1;}}
+  .card .ic{font-size:2.6rem;}
+  .card h3{font-size:clamp(1.1rem,2.1vw,1.5rem);font-weight:900;margin:.7rem 0 .8rem;letter-spacing:-.01em;}
+  .kw{display:inline-block;font-size:clamp(.78rem,1.4vw,1rem);font-weight:800;color:var(--green-dark);
+    background:var(--green-soft);border-radius:8px;padding:5px 11px;margin:3px;}
+  .card.tech .kw{color:#1e40af;background:#eff6ff;}
+
+  /* 데모 폰 */
+  .demo-wrap{display:flex;gap:4vw;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:1.6rem;}
+  .phone{width:300px;max-width:78vw;background:#0b1411;border-radius:38px;padding:12px;
+    box-shadow:0 26px 64px rgba(0,0,0,.4);flex-shrink:0;}
+  .screen{background:#eef5f0;border-radius:28px;overflow:hidden;height:600px;position:relative;}
+  .scr-head{background:#fff;border-bottom:3px solid var(--green);padding:12px 14px;display:flex;align-items:center;gap:8px;}
+  .scr-head .logo{width:30px;height:30px;border-radius:8px;background:var(--red-soft);display:flex;align-items:center;justify-content:center;font-size:1rem;}
+  .scr-head b{color:var(--green-dark);font-size:1rem;}
+  .scr-body{padding:10px;height:calc(100% - 56px);overflow:hidden;}
+  .field{margin-bottom:7px;text-align:left;}
+  .field .fl{font-size:.66rem;font-weight:800;color:var(--gray);margin-bottom:3px;}
+  .gcsopt{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:6px 9px;font-size:.7rem;}
+  .selbox{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1.5px solid var(--line);
+    border-radius:8px;padding:8px 10px;font-size:.72rem;font-weight:700;color:var(--ink);}
+  .selbox .cv{color:var(--gray);}
+  .mini-map{height:84px;border-radius:10px;border:1.5px solid var(--line);position:relative;overflow:hidden;
+    background:repeating-linear-gradient(0deg,#e3ece6 0 1px,transparent 1px 21px),
+               repeating-linear-gradient(90deg,#e3ece6 0 1px,transparent 1px 21px),#eef5f0;}
+  .mini-map .road{position:absolute;background:#d6ded8;}
+  .mini-map .r1{left:-10%;top:46%;width:120%;height:9px;transform:rotate(-7deg);}
+  .mini-map .r2{left:34%;top:-10%;width:9px;height:120%;transform:rotate(6deg);}
+  .mini-map .pin{position:absolute;left:50%;top:52%;transform:translate(-50%,-100%);font-size:1.4rem;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25));}
+  .mini-map .ml{position:absolute;left:7px;bottom:6px;font-size:.58rem;font-weight:700;color:var(--gray);background:rgba(255,255,255,.85);padding:1px 7px;border-radius:6px;}
+  .gcsopt.sel{background:var(--green-soft);border-color:var(--green);}
+  .gcsopt .n{width:22px;height:22px;border-radius:50%;background:#fff;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.72rem;color:var(--gray);}
+  .gcsopt.sel .n{background:var(--green);border-color:var(--green);color:#fff;}
+  .vit{display:flex;gap:6px;} .vit .v{flex:1;background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:6px;text-align:center;}
+  .vit .v b{display:block;font-size:1rem;} .vit .v span{font-size:.6rem;color:var(--gray);}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;}
+  .chip{font-size:.68rem;font-weight:700;border:1.5px solid var(--line);border-radius:7px;padding:5px 8px;background:#fff;color:var(--gray);}
+  .chip.on{background:var(--green-soft);border-color:var(--green);color:var(--green-dark);}
+  .gobtn{margin-top:8px;background:var(--green);color:#fff;text-align:center;font-weight:800;padding:11px;border-radius:10px;font-size:.85rem;}
+  .result{position:absolute;inset:0;background:#eef5f0;padding:12px;transform:translateY(100%);
+    transition:transform .6s cubic-bezier(.2,.8,.2,1);overflow:auto;}
+  .demo-run .result{transform:translateY(0);}
+  .rcard{background:#fff;border:1px solid var(--line);border-left:4px solid var(--green);border-radius:12px;padding:11px;margin-bottom:8px;text-align:left;}
+  .rrank{font-size:.66rem;font-weight:800;color:var(--green-dark);text-transform:uppercase;letter-spacing:.4px;display:flex;justify-content:space-between;align-items:center;}
+  .hemspill{background:var(--red);color:#fff;font-size:.6rem;font-weight:800;padding:2px 7px;border-radius:20px;}
+  .rname{font-size:.95rem;font-weight:800;margin:3px 0;}
+  .rbadge{display:inline-block;font-size:.62rem;font-weight:800;padding:2px 7px;border-radius:20px;background:#ecfdf5;color:var(--green-dark);}
+  .rstats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:7px 0;}
+  .rstats .s{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:5px;text-align:center;}
+  .rstats .s b{display:block;font-size:.95rem;} .rstats .s span{font-size:.55rem;color:var(--gray);}
+  .specrow{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0;}
+  .st{font-size:.6rem;font-weight:700;padding:2px 6px;border-radius:5px;}
+  .st.h{background:var(--green-soft);color:var(--green-dark);} .st.m{background:var(--red-soft);color:var(--red);}
+  .eqrow{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0;}
+  .eqtag{font-size:.58rem;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--green-soft);color:var(--green-dark);border:1px solid #bbf7d0;}
+  .xai{background:var(--green-soft);border:1px solid #bbf7d0;border-radius:7px;padding:7px 9px;margin-top:5px;}
+  .xai .xl{font-size:.58rem;font-weight:800;color:var(--green-dark);text-transform:uppercase;}
+  .xai .xt{font-size:.66rem;color:var(--ink);line-height:1.5;margin-top:2px;}
+  .demo-legend{display:flex;flex-direction:column;gap:.8rem;}
+  .demo-legend .li{display:flex;align-items:center;gap:.7rem;font-size:clamp(1rem,1.9vw,1.35rem);font-weight:800;}
+  .demo-legend .li i{font-style:normal;font-size:1.6rem;}
+
+  /* 결론 분기 */
+  .branch{display:grid;grid-template-columns:1fr auto 1fr;gap:1.4rem;align-items:center;max-width:1000px;width:100%;margin-top:2.4rem;}
+  .branch .b{border-radius:20px;padding:1.8rem 1.6rem;text-align:left;}
+  .branch .bad{background:#1b2b25;border:1px solid #2c4035;}
+  .branch .good{background:#fff;border:1px solid var(--green);box-shadow:0 18px 44px rgba(22,163,74,.2);}
+  .branch h4{font-size:clamp(1rem,2vw,1.4rem);font-weight:900;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;}
+  .branch .bad h4{color:#ff9a9a;} .branch .good h4{color:var(--green-dark);}
+  .branch ul{list-style:none;}
+  .branch li{font-size:clamp(.9rem,1.7vw,1.2rem);font-weight:700;margin:.7rem 0;display:flex;align-items:center;gap:.5rem;}
+  .branch .bad li{color:#b8c8c0;} .branch .good li{color:var(--ink);}
+  .branch .x{color:#ff8a8a;font-weight:900;} .branch .c{color:var(--green);font-weight:900;}
+  .vs{font-size:clamp(1.2rem,3vw,2rem);font-weight:900;color:#5fe39a;}
+  @media(max-width:760px){.branch{grid-template-columns:1fr;}.vs{display:none;}}
+
+  /* 결론 equation */
+  .eq{display:flex;align-items:center;gap:clamp(1rem,4vw,3rem);flex-wrap:wrap;justify-content:center;margin-top:1rem;}
+  .eq .e{font-size:clamp(2.6rem,9vw,6.5rem);font-weight:900;line-height:1;}
+  .eq .ar{font-size:clamp(2rem,6vw,4.5rem);color:#d6ffe6;}
+
+  /* HUD */
+  #progress{position:fixed;top:0;left:0;height:4px;background:var(--green);z-index:50;transition:width .4s;}
+  #dots{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:50;}
+  #dots b{width:9px;height:9px;border-radius:50%;background:rgba(120,140,130,.4);cursor:pointer;transition:all .2s;}
+  #dots b.on{background:var(--green);width:26px;border-radius:6px;}
+  .nav{position:fixed;bottom:14px;z-index:50;background:rgba(255,255,255,.85);border:1px solid var(--line);
+    border-radius:30px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:1.2rem;color:var(--green-dark);user-select:none;backdrop-filter:blur(6px);}
+  #prev{right:70px;} #next{right:18px;}
+  #counter{position:fixed;top:16px;right:20px;z-index:50;font-size:.8rem;font-weight:700;color:var(--gray);
+    background:rgba(255,255,255,.7);padding:4px 12px;border-radius:20px;}
+  .dark #counter,.green #counter{color:#fff;background:rgba(255,255,255,.14);}
+  #notes{position:fixed;left:0;right:0;bottom:0;z-index:60;background:#0b1411;color:#cfe;padding:18px 22px;
+    font-size:1rem;line-height:1.6;transform:translateY(100%);transition:transform .3s;border-top:3px solid var(--green);max-height:38vh;overflow:auto;}
+  #notes.show{transform:translateY(0);} #notes b{color:#5fe39a;}
+  .hint{position:fixed;bottom:16px;left:18px;z-index:50;font-size:.72rem;color:var(--gray);}
+  .dark .hint{color:#6b8278;}
+  /* 인터랙티브 파이프라인 */
+  .pipe{display:flex;align-items:center;gap:.7rem;justify-content:center;flex-wrap:wrap;width:100%;max-width:1180px;margin-top:2rem;}
+  .pipe-in{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:1rem .9rem;display:flex;flex-direction:column;gap:.45rem;min-width:148px;transition:.4s;}
+  .pipe-in .pin-title{font-size:.66rem;font-weight:800;color:var(--green-dark);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.2rem;}
+  .pin-item{font-size:.82rem;font-weight:700;background:var(--green-soft);border-radius:8px;padding:6px 10px;color:var(--green-dark);text-align:left;}
+  .pipe-in.sent{box-shadow:0 0 0 2.5px var(--green);transform:translateY(-2px);}
+  .pipe-arrow{display:flex;align-items:center;color:var(--green);font-size:1.7rem;font-weight:900;}
+  .pipe-mods{display:flex;gap:.55rem;align-items:center;flex-wrap:nowrap;}
+  .pmod{position:relative;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:.9rem .6rem;width:106px;
+    display:flex;flex-direction:column;align-items:center;gap:.25rem;opacity:.3;transform:scale(.95);
+    transition:opacity .45s ease,transform .45s cubic-bezier(.2,.8,.2,1),box-shadow .45s,border-color .45s,background .45s;}
+  .pmod .pm-ic{font-size:1.7rem;line-height:1;}
+  .pmod .pm-name{font-size:.8rem;font-weight:800;text-align:center;letter-spacing:-.01em;}
+  .pmod .pm-cap{font-size:.62rem;color:var(--gray);text-align:center;line-height:1.3;}
+  .pmod.done{opacity:.92;border-color:#bbf7d0;background:var(--green-soft);}
+  .pmod.done::after{content:'✓';position:absolute;top:-9px;right:-9px;width:21px;height:21px;background:var(--green);color:#fff;
+    border-radius:50%;font-size:.72rem;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(22,163,74,.4);}
+  .pmod.on{opacity:1;transform:scale(1.14);border-color:var(--green);box-shadow:0 12px 32px rgba(22,163,74,.4);z-index:3;}
+  .pmod.on .pm-cap{color:var(--green-dark);font-weight:700;}
+  .pmod.on::before{content:'';position:absolute;inset:-4px;border-radius:16px;border:2px solid var(--green);opacity:.5;animation:ring 1.2s ease-out infinite;}
+  @keyframes ring{0%{transform:scale(1);opacity:.5;}100%{transform:scale(1.18);opacity:0;}}
+  .pipe-out{background:linear-gradient(160deg,#16a34a,#0f7a39);color:#fff;border-radius:16px;padding:1.1rem 1rem;
+    display:flex;flex-direction:column;align-items:center;gap:.3rem;min-width:128px;opacity:.3;transform:scale(.95);transition:.45s;}
+  .pipe-out .po-ic{font-size:1.8rem;} .pipe-out b{font-size:.92rem;}
+  .pipe-out.on{opacity:1;transform:scale(1.08);box-shadow:0 14px 36px rgba(22,163,74,.45);}
+  .pipe-step-cap{margin-top:2rem;min-height:1.6em;font-size:clamp(1.05rem,2.4vw,1.7rem);font-weight:800;color:var(--green-dark);transition:.3s;}
+  .pipe-hint{margin-top:.8rem;font-size:.82rem;color:var(--gray);font-weight:700;}
+  @media(max-width:860px){.pipe-mods{flex-wrap:wrap;justify-content:center;}.pipe-arrow{transform:rotate(90deg);}}
+  @media(max-width:760px){.g3,.g4{grid-template-columns:1fr 1fr;}.flow{flex-direction:column;}.flow .arrow{transform:rotate(90deg);}}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div id="counter">1 / 10</div>
+<div id="stage">
+
+  <!-- 1. 후킹 -->
+  <section class="slide dark active" data-notes="새벽 2시, 고속도로. 가족이 크게 다쳤고 구급차가 도착했다. 시간은 단 몇 분. <b>여기서 질문을 던지고 멈춰 세운다 → '어느 병원으로 가야 할까요?'</b> 잠시 침묵.">
+    <div class="eyebrow">새벽 2시 · 고속도로</div>
+    <div class="hero-ic pulse">🚑</div>
+    <div class="qmark">?</div>
+    <svg class="ecg" viewBox="0 0 600 100" preserveAspectRatio="none"><polyline points="0,50 130,50 160,50 175,18 192,86 212,50 300,50 330,50 345,18 362,86 382,50 470,50 500,50 515,30 530,70 545,50 600,50"/></svg>
+  </section>
+
+  <!-- 2. 문제 -->
+  <section class="slide" data-notes="전국 인프라는 이미 거대하다 — 응급의료기관 546개, 119 구급차 1,600대 이상, EMS 소방헬기 26대, 연간 이송 330만 건 이상. 그런데도 현장엔 '어느 병원'을 알려주는 정보가 없다 → 병원 쇼핑, 골든아워 소진.">
+    <div class="eyebrow">현장의 현실</div>
+    <h2>가까운 병원 <span class="accent-red">≠</span> 살릴 수 있는 병원</h2>
+    <div class="stat-row">
+      <div class="stat"><div class="num">546</div><div class="lbl">응급의료기관</div></div>
+      <div class="stat"><div class="num">1,600<span style="font-size:.5em;">+</span></div><div class="lbl">119 구급차</div></div>
+      <div class="stat"><div class="num">26</div><div class="lbl">EMS 소방헬기</div></div>
+      <div class="stat"><div class="num">330만<span style="font-size:.5em;">+</span></div><div class="lbl">연간 이송</div></div>
+    </div>
+  </section>
+
+  <!-- 3. 이상향 -->
+  <section class="slide dark" data-notes="이상적인 기술은 복잡한 장비가 아니다. 폰 하나로, 30초 안에, 치료 가능한 병원을, 근거까지. 누구나.">
+    <div class="eyebrow">필요한 기술</div>
+    <div class="num-hero">30<u>초 안에, 답을</u></div>
+    <div class="pill-row">
+      <div class="pill">📲 폰 하나로</div>
+      <div class="pill">🏥 치료 가능한 병원</div>
+      <div class="pill">🧠 판단 근거까지</div>
+    </div>
+  </section>
+
+  <!-- 4. 제품 등장 -->
+  <section class="slide green" data-notes="그래서 만들었다. TRIAGE-1 — 임상 근거·실시간 병원 데이터·AI를 결합한 외상 환자 병원 매칭 시스템.">
+    <div class="eyebrow">Solution</div>
+    <h1>TRIAGE-1</h1>
+    <div class="tagword">외상 환자 · 최적 병원 매칭</div>
+    <svg class="ecg" viewBox="0 0 600 100" preserveAspectRatio="none"><polyline points="0,50 130,50 160,50 175,18 192,86 212,50 300,50 330,50 345,18 362,86 382,50 470,50 500,50 515,30 530,70 545,50 600,50"/></svg>
+  </section>
+
+  <!-- 5. 작동 흐름 -->
+  <section class="slide" data-notes="작동은 단순하다. 입력 → 판정 → 매칭 → 추천. 사용자는 입력만. 이제 '무엇을' 보고 '어떻게' 판단하는지 두 갈래로.">
+    <div class="eyebrow">작동 원리</div>
+    <div class="flow">
+      <div class="step"><span class="si">✍️</span>입력<small>상태·위치</small></div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="si">🚦</span>판정<small>RED / YELLOW</small></div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="si">🔗</span>매칭<small>병상·전문과</small></div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="si">🏥</span>추천<small>Top 5 + 근거</small></div>
+    </div>
+  </section>
+
+  <!-- 6. 인터랙티브 파이프라인 (의미적 → 기술적) -->
+  <section class="slide pipe-slide" id="pipeSlide" data-steps="6" data-step="0"
+    data-notes="의미적 입력이 기술 모듈을 차례로 통과한다. <b>→ 키로 한 단계씩</b> 넘기며 설명: ①CDC 트리아지(RED/YELLOW) ②ML(외상센터 확률) ③실시간 병상(2-API 조인) ④HEMS(닥터헬기) ⑤XAI(근거) → 추천. 각 모듈이 순서대로 켜진다.">
+    <div class="eyebrow">구성 · 데이터가 흐르는 과정</div>
+    <div class="pipe">
+      <div class="pipe-in">
+        <div class="pin-title">입력 · 의미적</div>
+        <div class="pin-item">🧠 의식 (GCS)</div>
+        <div class="pin-item">❤️ 혈압 · 호흡</div>
+        <div class="pin-item">🩹 손상 부위</div>
+        <div class="pin-item">📍 위치</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-mods">
+        <div class="pmod" data-mod="1"><span class="pm-ic">📋</span><span class="pm-name">CDC 트리아지</span><span class="pm-cap">RED / YELLOW</span></div>
+        <div class="pmod" data-mod="2"><span class="pm-ic">🤖</span><span class="pm-name">ML 예측</span><span class="pm-cap">외상센터 확률</span></div>
+        <div class="pmod" data-mod="3"><span class="pm-ic">🔗</span><span class="pm-name">실시간 병상</span><span class="pm-cap">2-API 조인</span></div>
+        <div class="pmod" data-mod="4"><span class="pm-ic">🚁</span><span class="pm-name">HEMS</span><span class="pm-cap">닥터헬기</span></div>
+        <div class="pmod" data-mod="5"><span class="pm-ic">💬</span><span class="pm-name">XAI</span><span class="pm-cap">이송 근거</span></div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-out" data-mod="6"><span class="po-ic">🏥</span><b>추천 Top 5</b></div>
+    </div>
+    <div class="pipe-step-cap">입력 · 의미적 — 의식 · 혈압 · 호흡 · 손상부위 · 위치</div>
+    <div class="pipe-hint">▶ → 키 / 스페이스바로 단계별 진행</div>
+  </section>
+
+  <!-- 8. 데모 -->
+  <section class="slide" id="demoSlide" data-notes="실제 화면. 의식상태를 행동으로 고르고, 활력징후·손상부위 입력 → 추천받기. 결과가 올라온다: 1순위 권역외상센터, 3.6km·6분, 응급실 22, 흉부외과 매칭, AI 근거, 닥터헬기 권고. <b>스페이스바로 결과 재생.</b>">
+    <div class="eyebrow">실제 사용 화면</div>
+    <div class="demo-wrap">
+      <div class="phone"><div class="screen">
+        <div class="scr-head"><div class="logo">🚑</div><b>TRIAGE-1</b></div>
+        <div class="scr-body">
+          <div class="field"><div class="fl">의식 상태 (GCS) · 행동 선택</div>
+            <div class="gcsopt sel"><span class="n">4</span><span><b>통증에 회피</b> · 자극에서 몸을 피함</span></div>
+            <div class="gcsopt" style="opacity:.45;margin-top:4px;"><span class="n">3</span><span>비정상 굴곡</span></div>
+          </div>
+          <div class="field"><div class="fl">활력징후</div>
+            <div class="vit"><div class="v"><b>85</b><span>SBP</span></div><div class="v"><b>28</b><span>호흡</span></div><div class="v"><b>120</b><span>맥박</span></div></div></div>
+          <div class="field"><div class="fl">손상 기전</div>
+            <div class="selbox"><span>🚗 교통사고</span><span class="cv">▾</span></div></div>
+          <div class="field"><div class="fl">손상 부위 · 복수 선택</div>
+            <div class="chips">
+              <span class="chip">두부/경부</span><span class="chip">안면</span>
+              <span class="chip on">흉부</span><span class="chip on">복부</span>
+              <span class="chip">척추</span><span class="chip">상지</span>
+              <span class="chip">하지</span><span class="chip">골반/골격</span>
+            </div></div>
+          <div class="field"><div class="fl">📍 환자 위치</div>
+            <div class="mini-map">
+              <span class="road r1"></span><span class="road r2"></span>
+              <span class="pin">📍</span>
+              <span class="ml">광주 · 35.17, 126.92</span>
+            </div></div>
+          <div class="gobtn">🏥 병원 추천받기</div>
+        </div>
+        <div class="result">
+          <div class="rcard">
+            <div class="rrank"><span>1순위 ★</span><span class="hemspill">🚁 HEMS</span></div>
+            <div class="rname">조선대학교병원</div><span class="rbadge">권역외상센터</span>
+            <div class="rstats"><div class="s"><b>3.6<small style="font-size:.6rem;">km</small></b><span>약 6분</span></div><div class="s"><b>22</b><span>응급실</span></div><div class="s"><b>4</b><span>중환자실</span></div></div>
+            <div class="specrow"><span class="st h">✓ 외과</span><span class="st h">✓ 흉부외과</span></div>
+            <div class="eqrow"><span class="eqtag">🟢 CT</span><span class="eqtag">🟢 MRI</span><span class="eqtag">🟢 인공호흡기</span></div>
+            <div class="xai"><div class="xl">AI 이송 근거</div><div class="xt">의식 변화(GCS 4) — 거리가 멀어도 수술 역량이 완비된 권역외상센터 1순위.</div></div>
+          </div>
+          <div class="rcard" style="opacity:.9;">
+            <div class="rrank"><span>2순위</span></div>
+            <div class="rname">전남대학교병원</div><span class="rbadge">권역외상센터</span>
+            <div class="rstats"><div class="s"><b>3.0<small style="font-size:.6rem;">km</small></b><span>약 5분</span></div><div class="s"><b>15</b><span>응급실</span></div><div class="s"><b>1</b><span>중환자실</span></div></div>
+            <div class="specrow"><span class="st h">✓ 외과</span><span class="st h">✓ 흉부외과</span></div>
+            <div class="eqrow"><span class="eqtag">🟢 CT</span><span class="eqtag">🟢 MRI</span></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="demo-legend">
+        <div class="li"><i>🧠</i> 행동으로 선택</div>
+        <div class="li"><i>🔗</i> 실시간 매칭</div>
+        <div class="li"><i>🚁</i> 헬기 권고</div>
+        <div class="li"><i>💬</i> AI 근거</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. 수미상관 결론 -->
+  <section class="slide dark" data-notes="다시 그 새벽 2시. 같은 고속도로, 같은 사고. 차이는 하나 — 구급대원 손에 TRIAGE-1이 있느냐. 왼쪽: 헤매다 전원 반복. 오른쪽: 30초 직행. 같은 상황, 다른 결말.">
+    <div class="eyebrow">다시, 그 새벽 2시</div>
+    <div class="branch">
+      <div class="b bad"><h4>✕ TRIAGE-1 없이</h4><ul>
+        <li><span class="x">✕</span> 직감 이송</li>
+        <li><span class="x">✕</span> 전원 반복</li>
+        <li><span class="x">✕</span> 골든아워 소진</li>
+      </ul></div>
+      <div class="vs">VS</div>
+      <div class="b good"><h4>✓ TRIAGE-1과 함께</h4><ul>
+        <li><span class="c">✓</span> 30초 직행</li>
+        <li><span class="c">✓</span> 병상 · 전문과 확인</li>
+        <li><span class="c">✓</span> 골든아워 내 치료</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <!-- 10. 클로징 (심플) -->
+  <section class="slide green" data-notes="거창하지 않게 — 우리가 바꾸는 건 현장의 1분. 그 1분이 생명을 바꾼다.">
+    <div class="hero-ic">🚑</div>
+    <h1 style="margin-top:1.2rem;">TRIAGE-1</h1>
+    <div class="tagword">가장 살릴 수 있는 병원으로</div>
+  </section>
+
+  <!-- 11. 감사 인사 -->
+  <section class="slide dark" data-notes="감사합니다. (여기서 마무리 인사 후 질문 받기)">
+    <h1>Thank you</h1>
+    <div class="tagword" style="margin-top:1rem;">감사합니다</div>
+    <div style="margin-top:2.6rem;font-weight:800;letter-spacing:.12em;color:#5fe39a;font-size:clamp(1rem,2vw,1.4rem);">🚑 TRIAGE-1</div>
+  </section>
+
+</div>
+
+<div id="dots"></div>
+<div class="nav" id="prev">‹</div>
+<div class="nav" id="next">›</div>
+<div class="hint">← → 이동 · S 발표자 노트 · F 전체화면</div>
+<div id="notes"></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const dotsWrap=document.getElementById('dots');
+  const notes=document.getElementById('notes');
+  const counter=document.getElementById('counter');
+  const progress=document.getElementById('progress');
+  let i=0, notesOpen=false;
+
+  slides.forEach((_,n)=>{const b=document.createElement('b');b.onclick=()=>go(n);dotsWrap.appendChild(b);});
+  const dots=[...dotsWrap.children];
+
+  const PIPE_CAPS=[
+    "입력 · 의미적 — 의식 · 혈압 · 호흡 · 손상부위 · 위치",
+    "① CDC 트리아지 — 생리 기준으로 RED / YELLOW 판정",
+    "② ML 예측 — Random Forest로 권역외상센터 필요 확률",
+    "③ 실시간 병상 — 병원·병상 2-API를 hpid로 조인",
+    "④ HEMS 판정 — AMPT 점수로 닥터헬기 자동 권고",
+    "⑤ XAI — '왜 이 병원인가' 자연어 근거 생성",
+    "→ 추천 Top 5 — 거리·병상·전문과·근거와 함께"
+  ];
+  function applyPipe(s){
+    const step=parseInt(s.dataset.step||'0',10);
+    s.querySelectorAll('[data-mod]').forEach(n=>{
+      const m=+n.dataset.mod;
+      n.classList.toggle('on',m===step);
+      n.classList.toggle('done',m<step);
+    });
+    const inz=s.querySelector('.pipe-in'); if(inz) inz.classList.toggle('sent',step>=1);
+    const cap=s.querySelector('.pipe-step-cap'); if(cap) cap.textContent=PIPE_CAPS[Math.min(step,PIPE_CAPS.length-1)]||'';
+  }
+  function go(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    dots.forEach((d,k)=>d.classList.toggle('on',k===i));
+    counter.textContent=`${i+1} / ${slides.length}`;
+    progress.style.width=((i+1)/slides.length*100)+'%';
+    if(notesOpen) showNotes();
+    document.getElementById('demoSlide').classList.remove('demo-run');
+    slides.forEach(s=>{if(s.dataset.steps){s.dataset.step='0';applyPipe(s);}});
+  }
+  function showNotes(){notes.innerHTML=slides[i].dataset.notes||'(노트 없음)';notes.classList.add('show');notesOpen=true;}
+  function hideNotes(){notes.classList.remove('show');notesOpen=false;}
+  function next(){
+    const s=slides[i];
+    const demo=document.getElementById('demoSlide');
+    if(s===demo && !demo.classList.contains('demo-run')){demo.classList.add('demo-run');return;}
+    const steps=parseInt(s.dataset.steps||'0',10);
+    if(steps){let st=parseInt(s.dataset.step||'0',10);if(st<steps){s.dataset.step=st+1;applyPipe(s);return;}}
+    go(i+1);
+  }
+  function prev(){
+    const s=slides[i];
+    const steps=parseInt(s.dataset.steps||'0',10);
+    if(steps){let st=parseInt(s.dataset.step||'0',10);if(st>0){s.dataset.step=st-1;applyPipe(s);return;}}
+    go(i-1);
+  }
+
+  document.getElementById('next').onclick=next;
+  document.getElementById('prev').onclick=prev;
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();next();}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();prev();}
+    else if(e.key==='Home'){go(0);} else if(e.key==='End'){go(slides.length-1);}
+    else if(e.key.toLowerCase()==='s'){notesOpen?hideNotes():showNotes();}
+    else if(e.key.toLowerCase()==='f'){if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen();}
+  });
+  let tx=0;
+  addEventListener('touchstart',e=>tx=e.touches[0].clientX,{passive:true});
+  addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)dx<0?next():prev();},{passive:true});
+  go(0);
+</script>
+</body>
+</html>
