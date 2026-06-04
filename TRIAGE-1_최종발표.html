@@ -3,219 +3,243 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>TRIAGE-1 — 최종발표</title>
+<title>TRIAGE-1 — 261417 오로라</title>
 <style>
-  :root{
-    --green:#16a34a; --green-dark:#15803d; --green-soft:#f0fdf4;
-    --red:#dc2626; --red-dark:#b91c1c; --red-soft:#fef2f2; --amber:#d97706;
-    --ink:#0f1f1a; --gray:#5b6b66; --line:#e3eae7; --bg:#f4f8f6; --white:#fff;
-  }
+  :root{--green:#16a34a;--green-dark:#15803d;--green-soft:#f0fdf4;--red:#dc2626;--red-dark:#b91c1c;--red-soft:#fef2f2;
+    --blue:#3b82f6;--ink:#0f1f1a;--gray:#5b6b66;--line:#e3eae7;--bg:#f4f8f6;--white:#fff;}
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;}
-  body{font-family:-apple-system,'Segoe UI','Malgun Gothic',Roboto,sans-serif;background:#0b1411;color:var(--ink);overflow:hidden;-webkit-font-smoothing:antialiased;}
+  body{font-family:-apple-system,'Segoe UI','Malgun Gothic',Roboto,sans-serif;background:#e7f3ec;color:var(--ink);overflow:hidden;-webkit-font-smoothing:antialiased;}
   #stage{position:fixed;inset:0;}
+
+  /* ── 유기적 전환: 블러+스케일 settle ── */
   .slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;
-    padding:5vh 6vw;opacity:0;visibility:hidden;transform:translateY(22px);transition:opacity .5s,transform .5s;background:var(--bg);text-align:center;overflow:auto;}
-  .slide.active{opacity:1;visibility:visible;transform:none;}
-  .slide.dark{background:radial-gradient(120% 120% at 50% 25%,#13251e,#0b1411 70%);color:#eaf3ef;}
+    padding:5vh 6vw;text-align:center;overflow:auto;
+    opacity:0;transform:scale(1.05) translateY(14px);filter:blur(7px);pointer-events:none;
+    transition:opacity .6s ease,transform .75s cubic-bezier(.2,.85,.25,1),filter .6s ease;}
+  .slide.active{opacity:1;transform:none;filter:none;pointer-events:auto;}
+  .slide.dark{background:radial-gradient(130% 130% at 50% 16%,#ffffff,#e7f3ec 74%);color:var(--ink);}
   .slide.green{background:linear-gradient(160deg,#16a34a,#0f7a39);color:#fff;}
-  .eyebrow{font-size:clamp(.75rem,1.5vw,1.05rem);font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--green);margin-bottom:1.2rem;}
-  .dark .eyebrow{color:#5fe39a;} .green .eyebrow{color:#d6ffe6;}
+
+  .eyebrow{font-size:clamp(.72rem,1.5vw,1.05rem);font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--green);margin-bottom:1.2rem;}
+  .dark .eyebrow{color:var(--green-dark);} .green .eyebrow{color:#d6ffe6;}
+  .dark .tagword{color:var(--green-dark);}
   h1{font-size:clamp(2.4rem,8vw,6rem);font-weight:900;line-height:1.06;letter-spacing:-.03em;}
-  h2{font-size:clamp(1.5rem,3.8vw,2.8rem);font-weight:900;line-height:1.15;letter-spacing:-.02em;}
+  h2{font-size:clamp(1.5rem,3.8vw,2.8rem);font-weight:900;line-height:1.14;letter-spacing:-.02em;}
   .accent{color:var(--green);} .dark .accent{color:#5fe39a;} .green .accent{color:#fff;}
   .accent-red{color:var(--red);} .dark .accent-red{color:#ff8a8a;}
   .hero-ic{font-size:clamp(4rem,13vw,9rem);line-height:1;filter:drop-shadow(0 10px 26px rgba(0,0,0,.3));}
   .pulse{animation:pulse 1.8s ease-in-out infinite;} @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.07);}}
-  .qmark{font-size:clamp(4rem,14vw,10rem);font-weight:900;color:#5fe39a;line-height:1;}
+  .qmark{font-size:clamp(4rem,14vw,10rem);font-weight:900;color:var(--green);line-height:1;}
   .num-hero{font-size:clamp(4.5rem,20vw,14rem);font-weight:900;line-height:.85;letter-spacing:-.05em;color:var(--green);}
   .green .num-hero{color:#fff;} .num-hero u{text-decoration:none;font-size:.26em;font-weight:800;color:var(--gray);display:block;letter-spacing:.12em;margin-top:.5rem;}
   .green .num-hero u{color:#eafff2;}
-  .tagword{font-size:clamp(1.1rem,2.6vw,2rem);font-weight:800;margin-top:1.2rem;color:#eafff2;}
-  .lead{font-size:clamp(1rem,2vw,1.4rem);color:var(--gray);max-width:60ch;margin-top:1.2rem;line-height:1.6;}
-  .dark .lead{color:#9fb4ac;}
-  .ecg{width:min(520px,80vw);height:60px;color:var(--green);margin-top:2rem;}
-  .dark .ecg{color:#5fe39a;} .green .ecg{color:#eafff2;}
+  .tagword{font-size:clamp(1.1rem,2.6vw,2rem);font-weight:800;margin-top:1.1rem;color:#eafff2;}
+  .kwrow{display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center;margin-top:1.8rem;}
+  .kw{font-size:clamp(.85rem,1.7vw,1.2rem);font-weight:800;border-radius:30px;padding:.55rem 1.2rem;background:#fff;border:1.5px solid var(--line);color:var(--ink);}
+  .dark .kw{background:#fff;border-color:var(--line);color:var(--ink);}
+  .ecg{width:min(520px,80vw);height:58px;color:var(--green);margin-top:2rem;}
+  .dark .ecg{color:var(--green);} .green .ecg{color:#eafff2;}
   .ecg polyline{fill:none;stroke:currentColor;stroke-width:3;stroke-linejoin:round;stroke-linecap:round;stroke-dasharray:1600;stroke-dashoffset:1600;}
   .active .ecg polyline{animation:draw 2.4s ease forwards;} @keyframes draw{to{stroke-dashoffset:0;}}
   .stat-row{display:flex;gap:4vw;flex-wrap:wrap;justify-content:center;margin-top:2.4rem;}
   .stat .num{font-size:clamp(2.4rem,7vw,4.6rem);font-weight:900;color:var(--green);line-height:1;}
   .stat .lbl{font-size:clamp(.8rem,1.5vw,1.1rem);color:var(--gray);margin-top:.5rem;font-weight:600;}
 
-  /* 아키텍처 */
-  .arch{display:flex;align-items:stretch;gap:.6rem;flex-wrap:wrap;justify-content:center;margin-top:2rem;max-width:1150px;}
-  .arch-box{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:1.2rem 1rem;min-width:165px;box-shadow:0 8px 24px rgba(15,31,26,.06);}
-  .arch-box .t{font-size:.66rem;font-weight:800;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;}
+  /* ── 표지 ── */
+  .cover{justify-content:center;}
+  .aurora{position:absolute;inset:0;overflow:hidden;z-index:0;}
+  .aurora::before,.aurora::after{content:'';position:absolute;width:80vw;height:55vh;border-radius:50%;filter:blur(90px);opacity:.28;}
+  .aurora::before{background:radial-gradient(circle,#1fae5a,transparent 60%);top:-10%;left:-10%;animation:au1 9s ease-in-out infinite alternate;}
+  .aurora::after{background:radial-gradient(circle,#2dd4bf,transparent 60%);bottom:-15%;right:-5%;animation:au2 11s ease-in-out infinite alternate;}
+  @keyframes au1{to{transform:translate(15vw,8vh) scale(1.2);}} @keyframes au2{to{transform:translate(-12vw,-6vh) scale(1.15);}}
+  .cover>*{position:relative;z-index:1;}
+  .team{font-size:clamp(2.6rem,9vw,6.5rem);font-weight:900;letter-spacing:-.02em;
+    background:linear-gradient(100deg,#15803d,#0891b2);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .cover-sub{margin-top:1.4rem;font-size:clamp(1.1rem,2.6vw,2rem);font-weight:800;color:var(--ink);letter-spacing:.04em;}
+  .cover-sub b{color:var(--green-dark);}
+  .cover-meta{margin-top:2.2rem;font-size:.95rem;color:var(--gray);letter-spacing:.1em;}
+
+  /* ── 아키텍처 ── */
+  .arch{display:flex;align-items:stretch;gap:.55rem;flex-wrap:wrap;justify-content:center;margin-top:2rem;max-width:1150px;}
+  .arch-box{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:1.1rem 1rem;min-width:160px;box-shadow:0 8px 24px rgba(15,31,26,.06);}
+  .arch-box .t{font-size:.64rem;font-weight:800;color:var(--gray);text-transform:uppercase;letter-spacing:.08em;}
   .arch-box .h{font-size:clamp(1rem,1.9vw,1.35rem);font-weight:900;margin:.3rem 0;}
-  .arch-box .d{font-size:.78rem;color:var(--gray);line-height:1.4;}
+  .arch-box .d{font-size:.76rem;color:var(--gray);line-height:1.4;}
   .arch-box.m1{border-color:var(--green);border-top:4px solid var(--green);}
-  .arch-box.m2{border-color:#3b82f6;border-top:4px solid #3b82f6;}
+  .arch-box.m2{border-color:var(--blue);border-top:4px solid var(--blue);}
   .arch-box.api{background:#f8fafb;}
-  .arch-arrow{display:flex;align-items:center;color:var(--green);font-size:1.8rem;font-weight:900;}
+  .arch-arrow{display:flex;align-items:center;color:var(--green);font-size:1.7rem;font-weight:900;}
 
-  /* 클릭 가능한 모듈 */
-  .mods{display:grid;grid-template-columns:repeat(5,1fr);gap:.7rem;width:100%;max-width:1100px;margin-top:1.6rem;}
-  @media(max-width:820px){.mods{grid-template-columns:repeat(2,1fr);}}
-  .mod{background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:1.1rem .7rem;cursor:pointer;
-    transition:.2s;text-align:center;}
-  .mod:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(22,163,74,.18);}
-  .mod.on{border-color:var(--green);background:var(--green-soft);box-shadow:0 10px 26px rgba(22,163,74,.28);}
-  .mod .mic{font-size:1.9rem;} .mod .mn{font-size:.82rem;font-weight:800;margin-top:.4rem;line-height:1.2;}
-  .mod .mtag{font-size:.6rem;color:var(--gray);margin-top:.2rem;}
-  .mod-detail{margin-top:1.3rem;background:#fff;border:1.5px solid var(--green);border-radius:14px;padding:1.1rem 1.3rem;
-    max-width:760px;min-height:4.5em;text-align:left;box-shadow:0 8px 24px rgba(15,31,26,.06);}
-  .mod-detail h4{color:var(--green-dark);font-size:1.05rem;margin-bottom:.4rem;}
-  .mod-detail p{font-size:.92rem;color:var(--ink);line-height:1.6;}
-  .mod-detail .why{margin-top:.5rem;font-size:.82rem;color:var(--gray);}
-  .click-hint{margin-top:.8rem;font-size:.78rem;color:var(--gray);font-weight:700;}
+  /* ── 모듈 흐름 자동 애니메이션 ── */
+  .flow2{display:flex;align-items:center;gap:.4rem;justify-content:center;flex-wrap:wrap;margin-top:1.6rem;max-width:1180px;}
+  .fnode{background:#fff;border:1.5px solid var(--line);border-radius:15px;padding:.95rem .7rem;min-width:118px;text-align:center;
+    opacity:0;transform:translateY(16px) scale(.94);}
+  .active .fnode{animation:fin .55s var(--d,0s) both;}
+  @keyframes fin{to{opacity:1;transform:none;}}
+  .fnode .fi{font-size:1.7rem;line-height:1;} .fnode .fn{font-size:.82rem;font-weight:800;margin-top:.35rem;}
+  .fnode .ft{font-size:.62rem;color:var(--gray);margin-top:.15rem;}
+  .fnode.glow{position:relative;}
+  .active .fnode.glow::after{content:'';position:absolute;inset:-3px;border-radius:17px;border:2.5px solid var(--green);opacity:0;animation:gl 1s var(--d,0s) ease;}
+  @keyframes gl{0%{opacity:0;transform:scale(.96);}40%{opacity:.8;}100%{opacity:0;transform:scale(1.12);}}
+  .fconn{width:34px;height:4px;background:var(--line);border-radius:3px;position:relative;overflow:hidden;flex-shrink:0;}
+  .fconn::after{content:'';position:absolute;inset:0;width:0;background:var(--green);}
+  .active .fconn::after{animation:fill .4s var(--d,0s) ease forwards;}
+  @keyframes fill{to{width:100%;}}
+  .fpair{display:flex;flex-direction:column;gap:.4rem;}
+  .fresult{background:linear-gradient(160deg,#16a34a,#0f7a39);color:#fff;border-radius:15px;padding:1rem .9rem;min-width:130px;text-align:center;opacity:0;transform:scale(.9);}
+  .active .fresult{animation:pop .5s 2.5s both;} @keyframes pop{0%{opacity:0;transform:scale(.9);}60%{transform:scale(1.06);}100%{opacity:1;transform:scale(1);}}
+  .fresult .fi{font-size:1.7rem;} .fresult b{display:block;font-size:1.05rem;margin-top:.2rem;}
+  .ml-link{cursor:pointer;transition:.2s;}
+  .ml-link:hover{transform:translateY(-4px) scale(1.04)!important;box-shadow:0 12px 28px rgba(22,163,74,.3);border-color:var(--green);}
+  .ml-badge{display:inline-block;margin-top:.3rem;font-size:.58rem;font-weight:800;background:var(--green);color:#fff;border-radius:20px;padding:2px 8px;}
 
-  /* undertriage 결과 */
-  .res-wrap{display:flex;gap:3vw;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:1.8rem;}
-  .bars{display:flex;gap:1.6rem;align-items:flex-end;height:240px;padding:0 1rem;}
+  /* ── 결과/undertriage ── */
+  .res-wrap{display:flex;gap:3vw;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:1.6rem;}
+  .bars{display:flex;gap:1.6rem;align-items:flex-end;height:230px;padding:0 1rem;}
   .bar-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
-  .bar{width:90px;border-radius:10px 10px 0 0;display:flex;align-items:flex-start;justify-content:center;color:#fff;font-weight:900;padding-top:8px;transition:height 1s cubic-bezier(.2,.8,.2,1);}
-  .active .bar.rule{height:0;animation:grow1 1s .3s forwards;} .active .bar.ml{height:0;animation:grow2 1s .5s forwards;}
-  @keyframes grow1{to{height:74.1%;}} @keyframes grow2{to{height:83.1%;}}
+  .bar{width:88px;border-radius:10px 10px 0 0;display:flex;align-items:flex-start;justify-content:center;color:#fff;font-weight:900;padding-top:8px;}
+  .active .bar.rule{height:0;animation:g1 1s .4s forwards;} .active .bar.ml{height:0;animation:g2 1s .7s forwards;}
+  @keyframes g1{to{height:74.1%;}} @keyframes g2{to{height:83.1%;}}
   .bar.rule{background:#94a3a0;} .bar.ml{background:var(--green);}
   .bar-lbl{margin-top:.6rem;font-weight:700;font-size:.9rem;}
-  .res-cards{display:flex;flex-direction:column;gap:.8rem;text-align:left;}
-  .res-card{background:#fff;border:1px solid var(--line);border-left:4px solid var(--green);border-radius:12px;padding:.9rem 1.1rem;max-width:330px;}
-  .res-card b{font-size:1.4rem;color:var(--green-dark);} .res-card span{font-size:.85rem;color:var(--gray);}
+  .res-cards{display:flex;flex-direction:column;gap:.7rem;text-align:left;}
+  .res-card{background:#fff;border:1px solid var(--line);border-left:4px solid var(--green);border-radius:12px;padding:.85rem 1.1rem;max-width:320px;}
+  .res-card b{font-size:1.35rem;color:var(--green-dark);} .res-card span{font-size:.84rem;color:var(--gray);}
   .res-card.red{border-left-color:var(--red);} .res-card.red b{color:var(--red);}
 
-  /* 인터랙티브 시연 */
-  .ix{display:flex;gap:2vw;flex-wrap:wrap;justify-content:center;align-items:flex-start;margin-top:1rem;width:100%;max-width:1080px;}
-  .ix-panel{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:1.1rem 1.2rem;width:380px;max-width:92vw;text-align:left;box-shadow:0 10px 30px rgba(15,31,26,.06);}
-  .ix-panel h4{font-size:.95rem;color:var(--green-dark);margin-bottom:.7rem;}
-  .ix-row{margin-bottom:.7rem;}
-  .ix-row .l{font-size:.72rem;font-weight:800;color:var(--gray);margin-bottom:.25rem;}
-  .gcsbtns{display:flex;gap:4px;} .gcsbtns button{flex:1;padding:7px 0;border:1.5px solid var(--line);background:#fff;border-radius:7px;font-weight:800;cursor:pointer;font-size:.85rem;}
-  .gcsbtns button.on{background:var(--green);color:#fff;border-color:var(--green);}
-  .vit3{display:flex;gap:6px;} .vit3 label{flex:1;font-size:.7rem;color:var(--gray);font-weight:700;}
-  .vit3 input{width:100%;padding:8px;border:1.5px solid var(--line);border-radius:7px;font-size:1rem;margin-top:2px;}
-  .ix-chips{display:flex;flex-wrap:wrap;gap:5px;}
-  .ix-chips label{font-size:.72rem;font-weight:700;border:1.5px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer;background:#fff;color:var(--gray);}
-  .ix-chips input{display:none;} .ix-chips input:checked + span{}
-  .ix-chips label.on{background:var(--green-soft);border-color:var(--green);color:var(--green-dark);}
-  .ix-presets{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.8rem;}
-  .ix-presets button{font-size:.72rem;font-weight:700;border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:5px 11px;cursor:pointer;}
-  .ix-presets button:hover{border-color:var(--green);color:var(--green-dark);}
-  .toggle{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--gray);font-weight:700;cursor:pointer;}
+  /* ── 모델 세부 페이지 ── */
+  .steps{display:flex;align-items:stretch;gap:.5rem;flex-wrap:wrap;justify-content:center;margin-top:1.6rem;max-width:1120px;}
+  .step{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:1.2rem 1rem;min-width:200px;max-width:260px;text-align:left;opacity:0;transform:translateY(16px);}
+  .active .step{animation:fin .5s var(--d,0s) both;}
+  .step .sn{font-size:.66rem;font-weight:800;color:var(--green-dark);letter-spacing:.08em;}
+  .step .sh{font-size:1.1rem;font-weight:900;margin:.3rem 0 .5rem;}
+  .step .si{font-size:1.9rem;margin-bottom:.3rem;}
+  .step ul{list-style:none;} .step li{font-size:.82rem;color:var(--gray);margin:.3rem 0;padding-left:1rem;position:relative;line-height:1.4;}
+  .step li::before{content:'·';position:absolute;left:0;color:var(--green);font-weight:900;}
+  .step .tag{display:inline-block;margin-top:.5rem;font-size:.66rem;font-weight:800;background:var(--green-soft);color:var(--green-dark);border-radius:6px;padding:3px 8px;}
+  .detail-stats{display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;margin-top:1.6rem;}
+  .dstat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1rem 1.4rem;min-width:140px;}
+  .dstat .dn{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:900;color:var(--green);}
+  .dstat .dl{font-size:.78rem;color:var(--gray);margin-top:.2rem;}
+  .back-btn{position:fixed;top:14px;left:16px;z-index:55;background:var(--green);color:#fff;border:none;border-radius:30px;
+    padding:8px 16px;font-weight:800;font-size:.82rem;cursor:pointer;box-shadow:0 6px 18px rgba(22,163,74,.35);}
 
-  .ix-out{width:400px;max-width:92vw;}
-  .verdict{display:flex;gap:.8rem;}
-  .vbox{flex:1;border-radius:14px;padding:1rem;text-align:center;border:1.5px solid var(--line);background:#fff;}
-  .vbox .vt{font-size:.7rem;font-weight:800;color:var(--gray);text-transform:uppercase;}
-  .vbox .vtier{font-size:1.6rem;font-weight:900;margin:.2rem 0;}
-  .vbox .vname{font-size:.74rem;color:var(--gray);}
-  .vbox.rule .vtier{color:#64748b;} .vbox.ml{border-color:var(--green);background:var(--green-soft);} .vbox.ml .vtier{color:var(--green-dark);}
-  .catch{margin-top:.9rem;border-radius:12px;padding:.8rem 1rem;font-size:.85rem;font-weight:700;line-height:1.5;}
-  .catch.win{background:var(--red-soft);border:1.5px solid var(--red);color:var(--red-dark);}
-  .catch.same{background:var(--gray-100,#f1f5f4);border:1.5px solid var(--line);color:var(--gray);}
-  .hosp{margin-top:.9rem;background:#fff;border:1px solid var(--line);border-left:4px solid var(--green);border-radius:12px;padding:.8rem 1rem;text-align:left;}
-  .hosp .hn{font-weight:800;} .hosp .hm{font-size:.78rem;color:var(--gray);margin-top:.2rem;}
-  .si-readout{font-size:.74rem;color:var(--gray);margin-top:.5rem;}
-
-  /* 실제 앱 라이브 임베드 */
+  /* ── 실제 앱 라이브 ── */
   .demo-bar{display:flex;gap:6px;width:100%;max-width:560px;margin-bottom:1rem;flex-wrap:wrap;justify-content:center;}
   .demo-bar input{flex:1;min-width:200px;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:.85rem;}
   .demo-bar button{padding:9px 16px;border:none;border-radius:8px;background:var(--green);color:#fff;font-weight:800;cursor:pointer;font-size:.82rem;}
   .demo-bar button.alt{background:#fff;border:1.5px solid var(--line);color:var(--gray);}
   .phone-live{width:340px;max-width:90vw;height:600px;background:#0b1411;border-radius:38px;padding:12px;box-shadow:0 24px 60px rgba(0,0,0,.4);}
   .phone-live iframe{width:100%;height:100%;border:none;border-radius:28px;background:#eef5f0;}
+  .lead{font-size:clamp(.95rem,1.8vw,1.25rem);color:var(--gray);max-width:46ch;margin-top:1rem;line-height:1.6;}
 
-  /* 결론 */
+  /* ── 결론 ── */
   .branch{display:grid;grid-template-columns:1fr auto 1fr;gap:1.2rem;align-items:center;max-width:960px;width:100%;margin-top:2rem;}
   .branch .b{border-radius:18px;padding:1.5rem;text-align:left;}
   .branch .bad{background:#1b2b25;border:1px solid #2c4035;} .branch .good{background:#fff;border:1px solid var(--green);box-shadow:0 16px 40px rgba(22,163,74,.2);}
   .branch h4{font-size:clamp(1rem,2vw,1.3rem);font-weight:900;margin-bottom:.8rem;} .branch .bad h4{color:#ff9a9a;} .branch .good h4{color:var(--green-dark);}
   .branch li{list-style:none;font-size:clamp(.88rem,1.6vw,1.15rem);font-weight:700;margin:.6rem 0;} .branch .bad li{color:#b8c8c0;} .branch .good li{color:var(--ink);}
-  .branch .x{color:#ff8a8a;} .branch .c{color:var(--green);} .vs{font-size:clamp(1.2rem,3vw,2rem);font-weight:900;color:#5fe39a;}
-  @media(max-width:760px){.branch{grid-template-columns:1fr;}.vs{display:none;}}
+  .branch .x{color:#ff8a8a;} .branch .c{color:var(--green);} .vs{font-size:clamp(1.2rem,3vw,2rem);font-weight:900;color:var(--green-dark);}
+  @media(max-width:760px){.branch{grid-template-columns:1fr;}.vs{display:none;}.flow2{gap:.3rem;}.fconn{width:18px;}}
 
-  /* HUD */
-  #progress{position:fixed;top:0;left:0;height:4px;background:var(--green);z-index:50;transition:width .4s;}
-  #dots{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:50;}
-  #dots b{width:8px;height:8px;border-radius:50%;background:rgba(120,140,130,.4);cursor:pointer;transition:.2s;} #dots b.on{background:var(--green);width:24px;border-radius:6px;}
+  /* ── HUD ── */
+  #progress{position:fixed;top:0;left:0;height:4px;background:var(--green);z-index:50;transition:width .5s;}
+  #dots{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:50;}
+  #dots b{width:8px;height:8px;border-radius:50%;background:rgba(120,140,130,.4);cursor:pointer;transition:.2s;} #dots b.on{background:var(--green);width:22px;border-radius:6px;}
   .nav{position:fixed;bottom:12px;z-index:50;background:rgba(255,255,255,.85);border:1px solid var(--line);border-radius:30px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.2rem;color:var(--green-dark);user-select:none;backdrop-filter:blur(6px);}
   #prev{right:66px;} #next{right:16px;}
   #counter{position:fixed;top:14px;right:18px;z-index:50;font-size:.78rem;font-weight:700;color:var(--gray);background:rgba(255,255,255,.7);padding:4px 11px;border-radius:20px;}
-  .dark #counter,.green #counter{color:#fff;background:rgba(255,255,255,.14);}
+  .green #counter{color:#fff;background:rgba(255,255,255,.14);}
   #notes{position:fixed;left:0;right:0;bottom:0;z-index:60;background:#0b1411;color:#cfe;padding:16px 20px;font-size:.95rem;line-height:1.6;transform:translateY(100%);transition:.3s;border-top:3px solid var(--green);max-height:38vh;overflow:auto;} #notes.show{transform:translateY(0);} #notes b{color:#5fe39a;}
   .hint{position:fixed;bottom:14px;left:16px;z-index:50;font-size:.7rem;color:var(--gray);} .dark .hint{color:#6b8278;}
 </style>
 </head>
 <body>
-<div id="progress"></div><div id="counter">1 / 11</div>
+<div id="progress"></div><div id="counter">1 / 12</div>
+<button class="back-btn" id="backBtn" style="display:none;" onclick="go(MOD_SLIDE)">← 발표로</button>
 <div id="stage">
 
+  <!-- 0. 표지 -->
+  <section class="slide dark cover active" data-notes="표지. 팀명 261417 오로라. 프로젝트 TRIAGE-1.">
+    <div class="aurora"></div>
+    <div class="team">261417 오로라</div>
+    <div class="cover-sub"><b>TRIAGE-1</b> · AI 외상 환자 병원 매칭</div>
+    <div class="cover-meta">AI 활용 프로젝트 · 최종 발표</div>
+  </section>
+
   <!-- 1. 후킹 -->
-  <section class="slide dark active" data-notes="새벽 2시, 고속도로. 가족이 크게 다쳤고 구급차가 도착. <b>'어느 병원으로 가야 할까요?'</b> 질문 던지고 잠시 침묵.">
+  <section class="slide dark" data-notes="새벽 2시 고속도로. 가족이 크게 다쳤고 구급차 도착. '어느 병원으로 가야 할까요?' 잠시 침묵.">
     <div class="eyebrow">새벽 2시 · 고속도로</div>
     <div class="hero-ic pulse">🚑</div><div class="qmark">?</div>
     <svg class="ecg" viewBox="0 0 600 100" preserveAspectRatio="none"><polyline points="0,50 130,50 160,50 175,18 192,86 212,50 300,50 330,50 345,18 362,86 382,50 470,50 500,50 515,30 530,70 545,50 600,50"/></svg>
   </section>
 
   <!-- 2. 문제 -->
-  <section class="slide" data-notes="인프라는 거대하다(546기관·1600구급차·26헬기·330만이송). 그런데 현장엔 '어디로'를 알려주는 정보가 없다. 특히 규칙(CDC 생리기준)은 겉보기 안정적인 중증, 즉 잠복 중증의 28%를 놓친다(Kang 2022).">
+  <section class="slide" data-notes="인프라는 거대하다. 그런데 현장엔 '어디로'를 알려주는 정보가 없다. 규칙(CDC 생리기준)은 겉보기 안정적인 잠복 중증의 28%를 놓친다(Kang 2022).">
     <div class="eyebrow">현장의 현실</div>
     <h2>가까운 병원 <span class="accent-red">≠</span> 살릴 수 있는 병원</h2>
     <div class="stat-row">
       <div class="stat"><div class="num">546</div><div class="lbl">응급의료기관</div></div>
       <div class="stat"><div class="num">1,600<span style="font-size:.5em;">+</span></div><div class="lbl">119 구급차</div></div>
       <div class="stat"><div class="num">26</div><div class="lbl">EMS 소방헬기</div></div>
-      <div class="stat"><div class="num">330만<span style="font-size:.5em;">+</span></div><div class="lbl">연간 이송</div></div>
+      <div class="stat"><div class="num accent-red">28%</div><div class="lbl">규칙이 놓치는 잠복 중증</div></div>
     </div>
-    <p class="lead">그러나 현장 규칙(CDC 생리기준)은 <b style="color:var(--red)">겉보기 안정적인 중증(잠복 중증)의 28%를 놓칩니다</b> (Kang 2022)</p>
   </section>
 
   <!-- 3. 이상향 -->
   <section class="slide dark" data-notes="이상적 기술: 폰 하나로 30초 안에, 치료 가능한 병원을, 근거까지. 누구나.">
     <div class="eyebrow">필요한 기술</div>
     <div class="num-hero">30<u>초 안에, 답을</u></div>
-    <p class="lead">폰 하나로 · 치료 가능한 병원 · 판단 근거까지</p>
+    <div class="kwrow"><div class="kw">📲 폰 하나로</div><div class="kw">🏥 치료 가능한 병원</div><div class="kw">🧠 판단 근거까지</div></div>
   </section>
 
   <!-- 4. 제품 -->
-  <section class="slide green" data-notes="TRIAGE-1 — 임상근거·실시간 병원데이터·AI를 결합한 외상 환자 병원 매칭 시스템.">
+  <section class="slide green" data-notes="TRIAGE-1 — 임상근거·실시간 병원데이터·AI 결합 외상 병원 매칭.">
     <div class="eyebrow">Solution</div><h1>TRIAGE-1</h1>
     <div class="tagword">외상 환자 · 최적 병원 매칭</div>
     <svg class="ecg" viewBox="0 0 600 100" preserveAspectRatio="none"><polyline points="0,50 130,50 160,50 175,18 192,86 212,50 300,50 330,50 345,18 362,86 382,50 470,50 500,50 515,30 530,70 545,50 600,50"/></svg>
   </section>
 
-  <!-- 5. 전체 아키텍처 -->
-  <section class="slide" data-notes="시스템은 두 개의 판단 모델로 나뉜다. Model1: 환자 현장정보 → 필요한 병원 '등급(조건)' 판단. Model2: 그 조건으로 실시간 병원 API와 비교해 실제 병원 매칭. 사이를 실시간 데이터가 흐른다.">
+  <!-- 5. 아키텍처 -->
+  <section class="slide" data-notes="두 판단 모델. Model1: 현장정보 → 필요 등급. Model2: 그 조건으로 실시간 병원 매칭. 오늘은 Model1을 본다.">
     <div class="eyebrow">전체 구조 · 두 개의 판단 모델</div>
-    <h2>입력 → <span class="accent">필요 등급</span> → <span style="color:#3b82f6">병원 매칭</span></h2>
+    <h2>입력 → <span class="accent">필요 등급</span> → <span style="color:var(--blue)">병원 매칭</span></h2>
     <div class="arch">
       <div class="arch-box"><div class="t">입력</div><div class="h">🧍 현장 정보</div><div class="d">의식·혈압·호흡·맥박<br>손상부위·위치</div></div>
       <div class="arch-arrow">→</div>
       <div class="arch-box m1"><div class="t">Model 1</div><div class="h">필요 등급 판단</div><div class="d">잠복 중증까지 추정<br>→ 필요 병원 Tier</div></div>
       <div class="arch-arrow">→</div>
-      <div class="arch-box m2"><div class="t">Model 2</div><div class="h">병원 매칭</div><div class="d">조건 우선순위로<br>실시간 병원과 비교</div></div>
+      <div class="arch-box m2"><div class="t">Model 2</div><div class="h">병원 매칭</div><div class="d">조건 우선순위로<br>실시간 병원 비교</div></div>
       <div class="arch-arrow">→</div>
       <div class="arch-box api"><div class="t">실시간 API</div><div class="h">🏥 병원·병상</div><div class="d">등급·좌표 + 가용병상<br>(hpid 조인)</div></div>
     </div>
-    <p class="lead">오늘은 핵심인 <b class="accent">Model 1</b>을 자세히 보겠습니다.</p>
   </section>
 
-  <!-- 6. Model 1 모듈 (클릭) -->
-  <section class="slide" id="modSlide" data-notes="Model1은 5개 모듈. 각 모듈을 클릭하면 설명이 뜬다. 핵심: 규칙=안전바닥, AI=규칙이 놓친 잠복위험 상향 + 학습. 1.2 지도분류가 핵심, 1.3 비지도가 위험표현형 발견.">
-    <div class="eyebrow">Model 1 · 모듈 구성 (클릭해 보세요)</div>
-    <div class="mods">
-      <div class="mod" data-m="0"><div class="mic">🧪</div><div class="mn">1.1 특징공학</div><div class="mtag">파생지표</div></div>
-      <div class="mod on" data-m="1"><div class="mic">🤖</div><div class="mn">1.2 지도분류</div><div class="mtag">핵심 ML</div></div>
-      <div class="mod" data-m="2"><div class="mic">🔍</div><div class="mn">1.3 비지도</div><div class="mtag">표현형 발견</div></div>
-      <div class="mod" data-m="3"><div class="mic">🛡️</div><div class="mn">1.4 안전 오버라이드</div><div class="mtag">규칙 바닥</div></div>
-      <div class="mod" data-m="4"><div class="mic">🔄</div><div class="mn">1.5 피드백</div><div class="mtag">자가 학습</div></div>
+  <!-- 6. 모듈 흐름 (자동 애니메이션) -->
+  <section class="slide" id="modSlide" data-notes="Model1 데이터 흐름. 현장정보 → 특징공학(파생지표) → 지도분류+비지도 → 안전 오버라이드 → 필요 등급. 각 모듈이 순서대로 켜지며 데이터가 가공돼 결과로. <b>가운데 '지도분류'를 클릭하면 모델 세부 페이지로 이동.</b>">
+    <div class="eyebrow">Model 1 · 데이터가 가공되는 흐름</div>
+    <h2>입력이 <span class="accent">필요 등급</span>이 되기까지</h2>
+    <div class="flow2">
+      <div class="fnode glow" style="--d:.1s"><div class="fi">🧍</div><div class="fn">현장 정보</div><div class="ft">GCS·혈압·손상</div></div>
+      <div class="fconn" style="--d:.5s"></div>
+      <div class="fnode glow" style="--d:.7s"><div class="fi">🧪</div><div class="fn">1.1 특징공학</div><div class="ft">Shock Index·rSIG</div></div>
+      <div class="fconn" style="--d:1.1s"></div>
+      <div class="fpair">
+        <div class="fnode glow ml-link" style="--d:1.3s" onclick="go(MODEL_DETAIL)"><div class="fi">🤖</div><div class="fn">1.2 지도분류</div><div class="ft">Tier 확률</div><span class="ml-badge">클릭 → 자세히</span></div>
+        <div class="fnode glow" style="--d:1.5s"><div class="fi">🔍</div><div class="fn">1.3 비지도</div><div class="ft">표현형 발견</div></div>
+      </div>
+      <div class="fconn" style="--d:1.9s"></div>
+      <div class="fnode glow" style="--d:2.1s"><div class="fi">🛡️</div><div class="fn">1.4 안전</div><div class="ft">규칙 바닥</div></div>
+      <div class="fconn" style="--d:2.4s"></div>
+      <div class="fresult"><div class="fi">🏥</div><b>Tier 1</b><span style="font-size:.7rem;opacity:.85;">권역외상센터</span></div>
     </div>
-    <div class="mod-detail" id="modDetail"></div>
-    <div class="click-hint">▶ 모듈을 클릭하면 역할이 표시됩니다</div>
+    <p class="lead">규칙 = 안전 바닥 · AI = 잠복 위험 상향 + 학습</p>
   </section>
 
-  <!-- 7. 데이터 & 학습 결과 -->
-  <section class="slide" data-notes="라벨은 ISS≥16(해부학적 중증, 현장에선 모름)으로 정의 → 순환 탈출. 합성데이터를 문헌(통계연보·Kang·최윤희2022 KTDB)에 보정. 핵심 결과: 규칙 74.1% → ML 83.1%(+9%p). 특히 규칙이 0% 잡는 잠복중증을 ML이 34.7% 회수. 비지도는 잠복중증 표현형을 자동 발견.">
-    <div class="eyebrow">데이터 & 학습 결과</div>
+  <!-- 7. 결과 -->
+  <section class="slide" data-notes="라벨 ISS≥16(해부학·현장 미관측) → 순환 탈출. 합성데이터 문헌 보정. 규칙 74.1% → ML 83.1%(+9%p). 규칙이 0% 잡는 잠복중증을 ML이 34.7% 회수. 비지도가 잠복중증 표현형 자동 발견.">
+    <div class="eyebrow">학습 결과</div>
     <h2>규칙이 놓친 중증을 <span class="accent">AI가 잡는다</span></h2>
     <div class="res-wrap">
       <div>
@@ -226,87 +250,78 @@
         <div style="font-size:.78rem;color:var(--gray);margin-top:.5rem;">중증외상(ISS≥16) Tier1 민감도</div>
       </div>
       <div class="res-cards">
-        <div class="res-card red"><b>+9.0%p</b><br><span>undertriage 감소 (놓침 ↓)</span></div>
-        <div class="res-card"><b>34.7%</b><br><span>규칙이 0% 잡는 '잠복 중증'을 ML이 회수</span></div>
-        <div class="res-card"><b>비지도 군집</b><br><span>'겉보기 안정 + 보상성 쇼크' 표현형 자동 발견</span></div>
+        <div class="res-card red"><b>+9.0%p</b><br><span>undertriage 감소</span></div>
+        <div class="res-card"><b>34.7%</b><br><span>규칙이 0% 잡는 잠복 중증 회수</span></div>
+        <div class="res-card"><b>비지도 군집</b><br><span>'보상성 쇼크' 표현형 자동 발견</span></div>
       </div>
     </div>
-    <p class="lead">라벨 = ISS≥16(해부학적·현장 미관측) → <b>순환 탈출</b>. 합성데이터는 통계연보·Kang 2022·최윤희 2022(KTDB)에 보정.</p>
   </section>
 
-  <!-- 8. 실제 프로그램 라이브 시연 -->
-  <section class="slide" id="demoSlide" data-notes="실제 TRIAGE-1 앱을 iframe으로 임베드해 라이브 실행. 서버(localhost:5000 또는 배포 URL)가 떠 있어야 함. URL칸에서 주소 변경. 오프라인이면 '오프라인 모의시연' 버튼으로 판정 로직만 시연.">
+  <!-- 8. 실제 앱 라이브 -->
+  <section class="slide" id="demoSlide" data-notes="실제 TRIAGE-1 앱을 iframe 임베드. 서버(localhost 또는 배포 URL) 필요. 오프라인이면 모의시연.">
     <div class="eyebrow">실제 프로그램 시연 (라이브)</div>
     <div class="demo-bar">
       <input id="appUrl" placeholder="http://localhost:5000  (또는 배포 URL)">
       <button onclick="loadApp()">실행 ▶</button>
-      <button class="alt" onclick="toggleMock()">오프라인 모의시연</button>
     </div>
     <div class="phone-live" id="phoneLive"><iframe id="appFrame" title="TRIAGE-1 앱"></iframe></div>
-    <div id="appFallback" class="lead" style="display:none;">⚠️ 실제 앱을 불러오려면 <b>서버</b>가 필요합니다. 로컬에서 <b>localhost:5000</b> 서버를 켜거나 배포 URL을 입력하세요. (파일로 열려 있으면 서버가 없어 안 뜹니다 → 아래 '오프라인 모의시연' 사용)</div>
-    <div id="mockWrap" style="display:none;">
-    <div class="ix">
-      <div class="ix-panel">
-        <div class="ix-presets">
-          <button onclick="ixPreset('severe')">명백한 중증</button>
-          <button onclick="ixPreset('occult')">⚠️ 잠복 중증(보상성 쇼크)</button>
-          <button onclick="ixPreset('mild')">경증</button>
-        </div>
-        <div class="ix-row"><div class="l">의식 (GCS Motor)</div>
-          <div class="gcsbtns" id="ixGcs">
-            <button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button>
-            <button data-v="4">4</button><button data-v="5">5</button><button data-v="6" class="on">6</button>
-          </div></div>
-        <div class="ix-row"><div class="vit3">
-          <label>SBP<input type="number" id="ixSbp" value="125"></label>
-          <label>호흡<input type="number" id="ixRr" value="18"></label>
-          <label>맥박<input type="number" id="ixHr" value="115"></label>
-        </div></div>
-        <div class="ix-row"><div class="l">손상 부위</div>
-          <div class="ix-chips" id="ixInj">
-            <label data-v="head_neck">두부/경부<input type="checkbox"></label>
-            <label data-v="thorax" class="on">흉부<input type="checkbox" checked></label>
-            <label data-v="abdomen" class="on">복부<input type="checkbox" checked></label>
-            <label data-v="extremity">사지<input type="checkbox"></label>
-            <label data-v="spine">척추<input type="checkbox"></label>
-          </div></div>
-        <div class="ix-row"><label class="toggle"><input type="checkbox" id="ix65"> 65세 이상</label></div>
-      </div>
-      <div class="ix-out">
-        <div class="verdict">
-          <div class="vbox rule"><div class="vt">규칙(CDC)</div><div class="vtier" id="ruleTier">–</div><div class="vname" id="ruleName"></div></div>
-          <div class="vbox ml"><div class="vt">TRIAGE-1 (AI)</div><div class="vtier" id="mlTier">–</div><div class="vname" id="mlName"></div></div>
-        </div>
-        <div class="si-readout" id="siOut"></div>
-        <div class="catch" id="catchBox"></div>
-        <div class="hosp" id="hospBox"></div>
-      </div>
-    </div>
-    </div>
+    <div id="appFallback" class="lead" style="display:none;">⚠️ 실제 앱은 <b>서버</b>가 필요합니다 — localhost:5000 서버 실행 또는 배포 URL 입력</div>
   </section>
 
   <!-- 9. 수미상관 -->
-  <section class="slide dark" data-notes="다시 새벽 2시. 같은 사고. 차이는 TRIAGE-1 유무. 없으면 헤매다 전원; 있으면 30초 직행. 같은 상황, 다른 결말.">
+  <section class="slide dark" data-notes="다시 새벽 2시. 같은 사고. 차이는 TRIAGE-1 유무. 같은 상황, 다른 결말.">
     <div class="eyebrow">다시, 그 새벽 2시</div>
     <div class="branch">
-      <div class="b bad"><h4>✕ TRIAGE-1 없이</h4>
-        <li><span class="x">✕</span> 잠복 중증 놓침</li><li><span class="x">✕</span> 전원 반복</li><li><span class="x">✕</span> 골든아워 소진</li></div>
+      <div class="b bad"><h4>✕ TRIAGE-1 없이</h4><li><span class="x">✕</span> 잠복 중증 놓침</li><li><span class="x">✕</span> 전원 반복</li><li><span class="x">✕</span> 골든아워 소진</li></div>
       <div class="vs">VS</div>
-      <div class="b good"><h4>✓ TRIAGE-1과 함께</h4>
-        <li><span class="c">✓</span> AI가 잠복 중증 포착</li><li><span class="c">✓</span> 30초 직행</li><li><span class="c">✓</span> 골든아워 내 치료</li></div>
+      <div class="b good"><h4>✓ TRIAGE-1과 함께</h4><li><span class="c">✓</span> AI가 잠복 중증 포착</li><li><span class="c">✓</span> 30초 직행</li><li><span class="c">✓</span> 골든아워 내 치료</li></div>
     </div>
   </section>
 
   <!-- 10. 클로징 -->
-  <section class="slide green" data-notes="우리가 바꾸는 건 현장의 1분. 그 1분이 생명을 바꾼다.">
+  <section class="slide green" data-notes="우리가 바꾸는 건 현장의 1분.">
     <div class="hero-ic">🚑</div><h1 style="margin-top:1rem;">TRIAGE-1</h1>
     <div class="tagword">가장 살릴 수 있는 병원으로</div>
   </section>
 
   <!-- 11. 감사 -->
-  <section class="slide dark" data-notes="감사합니다. 질문 받기.">
+  <section class="slide dark" data-notes="감사합니다. 261417 오로라.">
     <h1>Thank you</h1><div class="tagword" style="margin-top:1rem;">감사합니다</div>
-    <div style="margin-top:2.4rem;font-weight:800;letter-spacing:.12em;color:#5fe39a;">🚑 TRIAGE-1</div>
+    <div style="margin-top:2.2rem;font-weight:800;letter-spacing:.12em;color:var(--green-dark);">261417 오로라 · TRIAGE-1</div>
+  </section>
+
+  <!-- 12. 모델 세부 A: 데이터 전처리 (하이퍼링크 대상) -->
+  <section class="slide detail" data-notes="모델 세부 1 — 데이터 전처리. 원천(문헌보정 합성) → 특징공학(파생지표) → 라벨링(ISS tier).">
+    <div class="eyebrow">모델 세부 · 데이터 전처리</div>
+    <h2>원천 → 가공 → 라벨</h2>
+    <div class="steps">
+      <div class="step" style="--d:.1s"><div class="si">📚</div><div class="sn">STEP 1 · 수집</div><div class="sh">원천 데이터</div>
+        <ul><li>문헌 보정 합성 5,000건</li><li>2024 통계연보 분포</li><li>Kang 2022 · 최윤희 2022(KTDB)</li></ul><span class="tag">한계: 합성 → 피드백 보완</span></div>
+      <div class="step" style="--d:.35s"><div class="si">🧪</div><div class="sn">STEP 2 · 특징공학</div><div class="sh">파생지표</div>
+        <ul><li>Shock Index = 맥박/혈압</li><li>rSIG (역SI × GCS)</li><li>다부위 손상 수·연령보정</li></ul><span class="tag">규칙이 못 보는 상호작용</span></div>
+      <div class="step" style="--d:.6s"><div class="si">🏷️</div><div class="sn">STEP 3 · 라벨</div><div class="sh">ISS 기반 3등급</div>
+        <ul><li>ISS≥16 → Tier1</li><li>ISS는 피처 제외</li><li>→ 순환 탈출</li></ul><span class="tag">해부학·현장 미관측</span></div>
+    </div>
+    <p class="lead">잠복 중증(ISS≥16·생리 정상)을 27% 포함 → 규칙 한계 재현</p>
+  </section>
+
+  <!-- 13. 모델 세부 B: 학습 & 평가 -->
+  <section class="slide detail" data-notes="모델 세부 2 — 학습·평가. RandomForest, class 균형, 확률보정. 평가: 정확도 86%, undertriage 74→83, 잠복 34.7% 회수, 비지도 표현형.">
+    <div class="eyebrow">모델 세부 · 학습 & 평가</div>
+    <h2>학습 → 검증</h2>
+    <div class="steps">
+      <div class="step" style="--d:.1s"><div class="si">🌲</div><div class="sn">학습</div><div class="sh">RandomForest</div>
+        <ul><li>Train/Test 80/20 · 5-fold CV</li><li>class_weight 균형</li><li>확률 보정(isotonic)</li><li>+ 비지도 K-means 군집</li></ul></div>
+      <div class="step" style="--d:.35s"><div class="si">🛡️</div><div class="sn">안전</div><div class="sh">오버라이드</div>
+        <ul><li>CDC RED → 무조건 Tier1</li><li>ML은 상향만, 하향 불가</li><li>명백한 중증 하향 차단</li></ul></div>
+      <div class="step" style="--d:.6s"><div class="si">🔄</div><div class="sn">확장</div><div class="sh">피드백 학습</div>
+        <ul><li>추천·전원·예후 로깅</li><li>주기적 재학습</li><li>쓸수록 정교화</li></ul></div>
+    </div>
+    <div class="detail-stats">
+      <div class="dstat"><div class="dn">86%</div><div class="dl">3등급 정확도</div></div>
+      <div class="dstat"><div class="dn">74→83%</div><div class="dl">undertriage 민감도</div></div>
+      <div class="dstat"><div class="dn">34.7%</div><div class="dl">잠복 중증 회수</div></div>
+    </div>
   </section>
 
 </div>
@@ -316,127 +331,43 @@
 <script>
   const slides=[...document.querySelectorAll('.slide')], dotsWrap=document.getElementById('dots');
   const notes=document.getElementById('notes'), counter=document.getElementById('counter'), progress=document.getElementById('progress');
+  const MAIN=12; // 표지~감사 (0..11) 본편, 12·13은 세부페이지
+  const MOD_SLIDE=6, MODEL_DETAIL=12;
   let i=0, notesOpen=false;
-  slides.forEach((_,n)=>{const b=document.createElement('b');b.onclick=()=>go(n);dotsWrap.appendChild(b);});
+  // 도트는 본편만
+  for(let k=0;k<MAIN;k++){const b=document.createElement('b');b.onclick=()=>go(k);dotsWrap.appendChild(b);}
   const dots=[...dotsWrap.children];
   function go(n){i=Math.max(0,Math.min(slides.length-1,n));
     slides.forEach((s,k)=>s.classList.toggle('active',k===i));
     dots.forEach((d,k)=>d.classList.toggle('on',k===i));
-    counter.textContent=`${i+1} / ${slides.length}`; progress.style.width=((i+1)/slides.length*100)+'%';
+    const isDetail = i>=MAIN;
+    counter.textContent = isDetail ? '모델 세부' : `${i+1} / ${MAIN}`;
+    progress.style.width=((Math.min(i,MAIN-1)+1)/MAIN*100)+'%';
+    document.getElementById('backBtn').style.display = isDetail ? 'block':'none';
     if(notesOpen) showNotes();
     if(slides[i].id==='demoSlide') autoLoadApp();}
-
-  // ── 실제 앱 라이브 임베드 ──
-  function loadApp(){
-    const f=document.getElementById('appFrame'); let u=document.getElementById('appUrl').value.trim();
-    if(!u) u=(location.protocol.startsWith('http')? location.origin : '');
-    if(!u){ document.getElementById('appFallback').style.display='block'; document.getElementById('phoneLive').style.display='none'; return; }
-    document.getElementById('appFallback').style.display='none';
-    document.getElementById('mockWrap').style.display='none';
-    document.getElementById('phoneLive').style.display='block';
-    document.getElementById('appUrl').value=u; f.src=u;
-  }
-  function toggleMock(){
-    const m=document.getElementById('mockWrap'), live=document.getElementById('phoneLive');
-    const show = m.style.display==='none';
-    m.style.display=show?'block':'none'; live.style.display=show?'none':'block';
-    document.getElementById('appFallback').style.display='none';
-    if(show) ixRun();
-  }
-  let _appLoaded=false;
-  function autoLoadApp(){
-    if(_appLoaded) return; _appLoaded=true;
-    if(location.protocol.startsWith('http')){ // 서버에서 열림 → 같은 출처의 실제 앱 자동 로드
-      document.getElementById('appUrl').value=location.origin; loadApp();
-    } else { // file:// → 서버 없음 → 폴백 안내
-      document.getElementById('phoneLive').style.display='none';
-      document.getElementById('appFallback').style.display='block';
-    }
-  }
   function showNotes(){notes.innerHTML=slides[i].dataset.notes||'';notes.classList.add('show');notesOpen=true;}
   function hideNotes(){notes.classList.remove('show');notesOpen=false;}
-  function next(){go(i+1);} function prev(){go(i-1);}
+  function next(){ if(i<MAIN-1) go(i+1); else if(i>=MAIN) go(Math.min(i+1,slides.length-1)); }
+  function prev(){ if(i>=MAIN) go(i-1); else go(i-1); }
   document.getElementById('next').onclick=next; document.getElementById('prev').onclick=prev;
-  document.addEventListener('keydown',e=>{
-    const tag=(e.target.tagName||'').toLowerCase(); if(tag==='input') return;
+  document.addEventListener('keydown',e=>{ if((e.target.tagName||'').toLowerCase()==='input')return;
     if(['ArrowRight',' ','PageDown'].includes(e.key)){e.preventDefault();next();}
     else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();prev();}
-    else if(e.key==='Home')go(0); else if(e.key==='End')go(slides.length-1);
+    else if(e.key==='Home')go(0); else if(e.key==='End')go(MAIN-1);
     else if(e.key.toLowerCase()==='s')notesOpen?hideNotes():showNotes();
-    else if(e.key.toLowerCase()==='f'){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}
-  });
+    else if(e.key.toLowerCase()==='f'){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}});
 
-  // ── 모듈 클릭 상세 ──
-  const MOD=[
-    {h:"1.1 특징공학 (Feature Engineering)",p:"현장 입력에서 임상 파생지표를 만든다 — Shock Index(맥박/혈압), rSIG, 연령보정 혈압, 다부위 손상 수.",w:"왜? 규칙은 단일값만 보지만, 파생지표는 '상호작용'(예: 혈압 정상인데 맥박↑ = 보상성 쇼크)을 드러낸다."},
-    {h:"1.2 지도학습 분류기 ⭐ (핵심 AI)",p:"RandomForest가 현장정보 → 3단계 필요등급(Tier)을 확률로 예측. class_weight 균형 + 확률 보정.",w:"왜? 약한 다요인 신호를 비선형 통합해, 규칙이 놓친 잠복 중증을 잡는다. (정확도 86%)"},
-    {h:"1.3 비지도 군집 (표현형 발견)",p:"라벨 없이 환자를 군집화 → '위험 표현형'을 자동 발견. UMAP로 시각화.",w:"왜? 사람이 정의하지 않은 위험군(예: 겉보기 안정 + 보상성 쇼크)을 데이터에서 드러낸다."},
-    {h:"1.4 안전 오버라이드 (규칙 바닥)",p:"CDC RED 기준 충족 시, ML 예측과 무관하게 최소 Tier1로 강제. ML은 등급을 '올릴' 수만 있고 '내릴' 순 없다.",w:"왜? 명백한 중증을 AI가 실수로 하향하는 것을 원천 차단 — 의료 안전."},
-    {h:"1.5 피드백 루프 (자가 학습)",p:"(현장입력·추천·실제선택·전원여부·예후)를 로깅 → 주기적 재학습.",w:"왜? 합성데이터의 한계를 실제 사용 데이터로 메워, 쓸수록 정교해진다."},
-  ];
-  function showMod(m){
-    document.querySelectorAll('#modSlide .mod').forEach(el=>el.classList.toggle('on',+el.dataset.m===m));
-    const d=MOD[m]; document.getElementById('modDetail').innerHTML=`<h4>${d.h}</h4><p>${d.p}</p><p class="why">${d.w}</p>`;
-  }
-  document.querySelectorAll('#modSlide .mod').forEach(el=>el.onclick=()=>showMod(+el.dataset.m));
-  showMod(1);
-
-  // ── 인터랙티브 시연 로직 (백엔드 불필요) ──
-  let ixGcs=6;
-  document.querySelectorAll('#ixGcs button').forEach(b=>b.onclick=()=>{
-    document.querySelectorAll('#ixGcs button').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on'); ixGcs=+b.dataset.v; ixRun();
-  });
-  // 체크박스의 change만 듣는다 (label 기본동작이 토글 → 수동토글 금지: 이중토글 버그 방지)
-  document.querySelectorAll('#ixInj input').forEach(inp=>inp.addEventListener('change',()=>{
-    inp.closest('label').classList.toggle('on', inp.checked); ixRun();
-  }));
-  ['ixSbp','ixRr','ixHr','ix65'].forEach(id=>document.getElementById(id).addEventListener('input',ixRun));
-  const TIERNAME={1:'권역외상센터',2:'권역/지역응급',3:'지역응급기관'};
-  function ixPreset(kind){
-    const set=(g,s,r,h,inj)=>{
-      ixGcs=g; document.querySelectorAll('#ixGcs button').forEach(x=>x.classList.toggle('on',+x.dataset.v===g));
-      document.getElementById('ixSbp').value=s; document.getElementById('ixRr').value=r; document.getElementById('ixHr').value=h;
-      document.querySelectorAll('#ixInj label').forEach(l=>{const on=inj.includes(l.dataset.v);l.querySelector('input').checked=on;l.classList.toggle('on',on);});
-    };
-    if(kind==='severe') set(3,75,30,125,['head_neck','thorax']);
-    if(kind==='occult') set(6,125,18,118,['thorax','abdomen']);
-    if(kind==='mild')   set(6,130,16,80,['extremity']);
-    ixRun();
-  }
-  function ixRun(){
-    const sbp=+document.getElementById('ixSbp').value||0, rr=+document.getElementById('ixRr').value||0, hr=+document.getElementById('ixHr').value||0;
-    const old=document.getElementById('ix65').checked, cut=old?110:90;
-    const inj=[...document.querySelectorAll('#ixInj label')].filter(l=>l.querySelector('input').checked).map(l=>l.dataset.v);
-    const crit=inj.filter(x=>['head_neck','thorax','abdomen'].includes(x)).length;
-    const si=hr/Math.max(sbp,1);
-    const cdcRed = ixGcs<6 || sbp<cut || rr<10 || rr>29;
-    // 규칙 baseline
-    const ruleTier = cdcRed?1:2;
-    // ML 모방: 규칙 + 잠복중증 포착(Shock Index, 다부위 critical)
-    let mlTier;
-    if(cdcRed) mlTier=1;
-    else if(si>=0.9 || crit>=2) mlTier=1;      // 보상성 쇼크 / 다부위 critical → 잠복중증 포착
-    else if(crit>=1) mlTier=2;
-    else mlTier=3;
-    document.getElementById('ruleTier').textContent='Tier '+ruleTier;
-    document.getElementById('ruleName').textContent=TIERNAME[ruleTier];
-    document.getElementById('mlTier').textContent='Tier '+mlTier;
-    document.getElementById('mlName').textContent=TIERNAME[mlTier];
-    document.getElementById('siOut').innerHTML=`Shock Index = ${si.toFixed(2)} ${si>=0.9?'<b style="color:var(--red)">(쇼크 의심 — 혈압 정상이어도 위험)</b>':''}`;
-    const cb=document.getElementById('catchBox');
-    if(mlTier<ruleTier){
-      cb.className='catch win';
-      cb.innerHTML='🚨 <b>AI가 규칙이 놓친 잠복 중증을 포착!</b><br>혈압·의식은 정상이지만 Shock Index/손상부위로 권역외상센터 필요 판정';
-    }else{
-      cb.className='catch same'; cb.innerHTML='규칙과 AI 판정 일치';
-    }
-    const hb=document.getElementById('hospBox');
-    if(mlTier===1) hb.innerHTML='<div class="hn">🏥 조선대학교병원 <span style="font-size:.7rem;color:var(--green-dark);font-weight:800;">권역외상센터</span></div><div class="hm">3.6km · 6분 · 응급실 22 · 흉부외과 ✓ · CT/MRI ✓ · 🚁 HEMS</div>';
-    else if(mlTier===2) hb.innerHTML='<div class="hn">🏥 첨단종합병원 <span style="font-size:.7rem;color:#3b82f6;font-weight:800;">지역응급의료센터</span></div><div class="hm">9km · 15분 · 응급실 21 · 중환자실 12</div>';
-    else hb.innerHTML='<div class="hn">🏥 인근 지역응급의료기관</div><div class="hm">경증 — 가까운 응급실로 이송</div>';
-  }
-  ixRun();
+  // ── 실제 앱 라이브 ──
+  function loadApp(){const f=document.getElementById('appFrame');let u=document.getElementById('appUrl').value.trim();
+    if(!u)u=(location.protocol.startsWith('http')?location.origin:'');
+    if(!u){document.getElementById('appFallback').style.display='block';document.getElementById('phoneLive').style.display='none';return;}
+    document.getElementById('appFallback').style.display='none';document.getElementById('phoneLive').style.display='block';
+    document.getElementById('appUrl').value=u; f.src=u;}
+  let _appLoaded=false;
+  function autoLoadApp(){if(_appLoaded)return;_appLoaded=true;
+    if(location.protocol.startsWith('http')){document.getElementById('appUrl').value=location.origin;loadApp();}
+    else{document.getElementById('phoneLive').style.display='none';document.getElementById('appFallback').style.display='block';}}
 
   go(0);
 </script>
