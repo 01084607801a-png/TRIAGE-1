@@ -197,14 +197,38 @@ OSRM_PROFILE = os.getenv("OSRM_PROFILE", "driving")
 # API 클라이언트 인스턴스 (재시도 로직 포함)
 api_client = APIClient(max_retries=3, timeout=5.0)
 
-# Claude API
-CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY")
-if CLAUDE_AVAILABLE and CLAUDE_API_KEY:
-    claude_client = Anthropic(api_key=CLAUDE_API_KEY)
-    logger.info("Claude API initialized")
+# ── 자연어 설명 LLM: Google Gemini (무료 티어) ──
+# requests만으로 REST 호출 → 추가 패키지 불필요. 키 없으면 규칙 기반 폴백.
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("CLAUDE_API_KEY")  # 키 자리 호환
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+LLM_AVAILABLE = bool(GEMINI_API_KEY)
+claude_client = None  # 하위호환(과거 참조 방지)
+if LLM_AVAILABLE:
+    logger.info(f"Gemini API initialized (model={GEMINI_MODEL})")
 else:
-    claude_client = None
-    logger.warning("Claude API not available - using fallback text generation")
+    logger.warning("Gemini API key not set - using rule-based explanation fallback")
+
+
+def call_gemini(prompt, max_tokens=256, timeout=20):
+    """Gemini generateContent REST 호출. 성공 시 텍스트, 실패 시 None."""
+    if not GEMINI_API_KEY:
+        return None
+    try:
+        url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+               f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}")
+        body = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.4},
+        }
+        r = requests.post(url, json=body, timeout=timeout)
+        if r.status_code != 200:
+            logger.warning(f"Gemini HTTP {r.status_code}: {r.text[:200]}")
+            return None
+        data = r.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except Exception as e:
+        logger.warning(f"Gemini error: {e}")
+        return None
 
 APP_VERSION = "3.4.0"  # Updated for Phase 1
 APP_VERSION_DATE = "2026-05-31"
@@ -1529,8 +1553,8 @@ def generate_explanation(patient, hospital, hems_eligibility=None):
         bed_analysis.append("CT 가능")
     bed_analysis_str = " | ".join(bed_analysis) if bed_analysis else "실시간 조회 불가 (API 미승인)"
 
-    # Claude API 사용
-    if claude_client:
+    # ── Gemini(무료)로 자연어 설명 생성, 실패 시 아래 규칙 기반 폴백 ──
+    if LLM_AVAILABLE:
         try:
             hems_context = ""
             if hems_recommended:
@@ -1540,7 +1564,7 @@ def generate_explanation(patient, hospital, hems_eligibility=None):
 - {hems_reason}
 - HEMS 생존율(94.9%) > 지상 이송(90.5%)
 - 해당 병원(권역외상센터)이 HEMS 최적 수령 기관입니다."""
-            
+
             prompt = f"""당신은 외상 전문 응급의학과 의사입니다.
 아래 환자 정보와 병원 역량을 분석하여 구급대원에게 전달할 이송 근거를 생성하세요.
 
@@ -1580,23 +1604,17 @@ def generate_explanation(patient, hospital, hems_eligibility=None):
 3. 최종 이송 권고 이유 1문장{' HEMS 권고를 포함하여' if hems_recommended else ''}
 총 3문장, 의료 전문용어 최소화."""
 
-            message = claude_client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=250,
-                messages=[{"role": "user", "content": prompt}]
-            )
-
-            explanation = message.content[0].text
-            
-            # HEMS 권고 시 상단에 배지 표시
-            if hems_recommended:
-                explanation = f"🚁 [HEMS 권고] {hems_reason}\n\n{explanation}"
-            
-            print(f"[CLAUDE] {hospital['name']}: {explanation[:80]}...")
-            return explanation
+            explanation = call_gemini(prompt, max_tokens=256)
+            if explanation:
+                # HEMS 권고 시 상단에 배지 표시
+                if hems_recommended:
+                    explanation = f"🚁 [HEMS 권고] {hems_reason}\n\n{explanation}"
+                print(f"[GEMINI] {hospital['name']}: {explanation[:80]}...")
+                return explanation
+            # explanation None → 아래 규칙 기반 폴백으로
 
         except Exception as e:
-            print(f"[CLAUDE_ERROR] {hospital['name']}: {e}")
+            print(f"[GEMINI_ERROR] {hospital['name']}: {e}")
 
     # ============================================================
     # Fallback: Claude 미사용 시 규칙 기반 설명
@@ -1665,7 +1683,7 @@ def health_check():
         'checks': {
             'hospital_api_key': bool(HOSPITAL_API_KEY),
             'bed_api_key': bool(BED_API_KEY),
-            'claude_available': claude_client is not None,
+            'llm_available': LLM_AVAILABLE,
             'ml_model_loaded': ML_MODEL is not None,
         }
     }
@@ -1776,7 +1794,7 @@ def recommend():
             'app_version': {
                 'version': APP_VERSION,
                 'date': APP_VERSION_DATE,
-                'claude_enabled': claude_client is not None,
+                'llm_enabled': LLM_AVAILABLE,
             }
         }), 503
 
@@ -1955,7 +1973,7 @@ def recommend():
         'app_version': {
             'version':         APP_VERSION,
             'date':            APP_VERSION_DATE,
-            'claude_enabled':  claude_client is not None,
+            'llm_enabled':  LLM_AVAILABLE,
         },
         'ml_model': ml_info,
         'search_radius_km': search_radius_used,

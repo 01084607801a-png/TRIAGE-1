@@ -14,7 +14,7 @@ services:
         sync: false          # Render 대시보드에서 직접 입력
       - key: NEMC_BED_API_KEY
         sync: false
-      - key: CLAUDE_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
       - key: SECRET_KEY
         generateValue: true  # Render가 자동 생성
