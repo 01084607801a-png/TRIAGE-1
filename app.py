@@ -200,7 +200,7 @@ api_client = APIClient(max_retries=3, timeout=5.0)
 # ── 자연어 설명 LLM: Google Gemini (무료 티어) ──
 # requests만으로 REST 호출 → 추가 패키지 불필요. 키 없으면 규칙 기반 폴백.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("CLAUDE_API_KEY")  # 키 자리 호환
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
 LLM_AVAILABLE = bool(GEMINI_API_KEY)
 claude_client = None  # 하위호환(과거 참조 방지)
 if LLM_AVAILABLE:
@@ -209,7 +209,7 @@ else:
     logger.warning("Gemini API key not set - using rule-based explanation fallback")
 
 
-def call_gemini(prompt, max_tokens=256, timeout=20):
+def call_gemini(prompt, max_tokens=512, timeout=20):
     """Gemini generateContent REST 호출. 성공 시 텍스트, 실패 시 None."""
     if not GEMINI_API_KEY:
         return None
@@ -1604,7 +1604,7 @@ def generate_explanation(patient, hospital, hems_eligibility=None):
 3. 최종 이송 권고 이유 1문장{' HEMS 권고를 포함하여' if hems_recommended else ''}
 총 3문장, 의료 전문용어 최소화."""
 
-            explanation = call_gemini(prompt, max_tokens=256)
+            explanation = call_gemini(prompt, max_tokens=512)
             if explanation:
                 # HEMS 권고 시 상단에 배지 표시
                 if hems_recommended:
