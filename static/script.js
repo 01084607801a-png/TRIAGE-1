@@ -325,25 +325,35 @@ let chatContext = null;     // 현재 추천 컨텍스트
 let chatHistory = [];       // 대화 기록
 
 function setupChat(payload, data) {
+    const r2 = v => (v == null ? null : Math.round(v * 100) / 100);
     const matched = (data.matched || []).slice(0, 5).map((h, i) => {
         const have = (h.required_specialties || []).filter(s => !(h.missing_specialties || []).includes(s));
+        const su = h.suitability || {};
         return {
             rank: i + 1,
             name: h.name,
             level: h.level,
             dist_km: (typeof h.route_distance_km === 'number' ? h.route_distance_km : h.dist_km),
             time: h.travel_time_min || null,
-            score: ((h.suitability?.suitability_score ?? h.score ?? 0) * 100).toFixed(0),
+            score: ((su.suitability_score ?? h.score ?? 0) * 100).toFixed(0),
             beds: (h.status?.hvec != null && h.status.hvec >= 0) ? h.status.hvec : '정보없음',
             spec: have.join(',') || '추론',
-            reason: h.reason || ''
+            miss: (h.missing_specialties || []).join(',') || '없음',
+            reason: h.reason || '',
+            // 세부 점수(0~1): 역량·거리·전문과·중환자실·실시간병상
+            comp: {
+                level: r2(su.hospital_level_score), dist: r2(su.distance_score),
+                spec: r2(su.specialty_match_score), icu: r2(su.trauma_icu_score),
+                realtime: r2(su.realtime_bed_score)
+            }
         };
     });
     chatContext = {
         patient: {
             triage: data.field_triage?.high_risk ? 'RED(고위험)' : 'YELLOW(중등도)',
             gcs: payload.gcs_motor, sbp: payload.sbp, rr: payload.rr,
-            injuries: (payload.injuries || []).join(', ')
+            age: payload.age, injuries: (payload.injuries || []).join(', '),
+            severity: r2(data.matched?.[0]?.suitability?.patient_severity)
         },
         matched
     };

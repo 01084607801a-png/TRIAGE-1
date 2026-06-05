@@ -2004,13 +2004,36 @@ def chat():
 
     patient = context.get('patient') or {}
     matched = context.get('matched') or []
+
+    # 중증도 기반 가중치 (calc_hospital_pair_suitability와 동일 공식)
+    sev = patient.get('severity')
+    try:
+        sev = float(sev)
+    except (TypeError, ValueError):
+        sev = 0.5
+    W = {'역량': 0.30 + 0.18*sev, '중환자실': 0.12 + 0.08*sev, '전문과': 0.18 + 0.10*sev,
+         '거리': 0.28 - 0.28*sev, '실시간병상': 0.12 - 0.08*sev}
+
     lines = []
     for i, h in enumerate(matched[:5], 1):
+        c = h.get('comp') or {}
+        # 항목별 가중 기여도(점) = 가중치 × 항목점수(0~1) × 100
+        def contrib(w, s):
+            return f"{w*s*100:.1f}" if s is not None else "-"
+        breakdown = (
+            f"역량 {contrib(W['역량'], c.get('level'))}"
+            f" · 전문과 {contrib(W['전문과'], c.get('spec'))}"
+            f" · 거리 {contrib(W['거리'], c.get('dist'))}"
+            f" · 중환자실 {contrib(W['중환자실'], c.get('icu'))}"
+            f" · 실시간병상 {contrib(W['실시간병상'], c.get('realtime'))}"
+        )
         lines.append(
-            f"{i}순위 {h.get('name')} | {h.get('level')} | {h.get('dist_km')}km · {h.get('time')}분 | "
-            f"적합도 {h.get('score')}점 | 응급실 {h.get('beds')} | 전문과 {h.get('spec')} | 사유: {str(h.get('reason',''))[:80]}"
+            f"{i}순위 {h.get('name')} ({h.get('level')}) | 거리 {h.get('dist_km')}km·{h.get('time')}분 | "
+            f"응급실 {h.get('beds')}병상 | 보유 전문과 {h.get('spec')} / 부족 {h.get('miss')} | "
+            f"총 적합도 {h.get('score')}점\n     └ 항목별 기여(점): {breakdown}"
         )
     hospitals_str = "\n".join(lines) if lines else "(추천 목록 없음)"
+    weight_str = " · ".join(f"{k} {v:.2f}" for k, v in W.items())
 
     history = context.get('history') or []
     hist_str = "\n".join(f"{m.get('role')}: {m.get('text')}" for m in history[-4:]) if history else ""
@@ -2018,21 +2041,23 @@ def chat():
     prompt = f"""당신은 외상 이송을 돕는 응급의학 AI 어시스턴트입니다. 아래 '현재 추천 결과'를 근거로 구급대원/사용자의 질문에 답하세요.
 
 [환자 상태]
-- 중증도: {patient.get('triage')} / GCS {patient.get('gcs')} / 혈압 {patient.get('sbp')} / 호흡 {patient.get('rr')} / 손상부위 {patient.get('injuries')}
+- 중증도: {patient.get('triage')} / 나이 {patient.get('age')} / GCS {patient.get('gcs')} / 혈압 {patient.get('sbp')} / 호흡 {patient.get('rr')} / 손상부위 {patient.get('injuries')}
 
 [현재 추천 순위 — 이 데이터에만 근거할 것]
 {hospitals_str}
 
-[추천 로직]
-- 순위는 '병원 등급(역량) · 전문과 일치 · 거리 · 가용병상'을 가중합한 적합도 점수로 결정됨.
-- 중증(RED)일수록 거리보다 역량(권역외상센터 등) 비중이 커짐. HEMS(닥터헬기)는 AMPT 점수·거리로 자동 권고.
+[추천 로직 — 항목별 가중치 (이 환자 중증도 반영)]
+- 적합도 = (역량·전문과·거리·중환자실·실시간병상) 점수를 가중합. 위 '항목별 기여(점)'가 각 병원이 항목에서 실제로 받은 점수임.
+- 현재 가중치: {weight_str}  (중증일수록 역량·전문과↑, 거리↓)
+- HEMS(닥터헬기)는 AMPT 점수·거리로 자동 권고.
 {f'[이전 대화]{chr(10)}{hist_str}' if hist_str else ''}
 
 [답변 규칙]
-- 한국어로 2~4문장, 간결하고 명확하게.
+- 한국어로 답하되, "왜 이 순위인지 / 왜 특정 병원이 더 낮은지" 물으면 **'항목별 기여(점)'를 직접 비교**해 설명하라. 예: "A는 거리 점수가 X로 B의 Y보다 높지만, 역량에서 B가 Z만큼 앞서 총점이 뒤집혔습니다."
+- 어느 항목에서 앞서고 뒤졌는지 구체적 숫자로. "로직에 따른 점수"처럼 뭉뚱그리지 말 것.
 - 위 데이터에 없는 사실은 추측 금지 → "실시간 유선 확인이 필요합니다"로 안내.
-- 사용자가 추가 정보(예: 임산부, 소아, 항응고제 복용)를 주면, 그 점이 병원 선택에 어떤 영향을 주는지 설명.
-- 의료 최종 판단은 의료진/구급대원 몫임을 의식하고 '보조 정보'로 제시.
+- 추가 정보(임산부·소아·항응고제 등)를 주면 병원 선택에 미치는 영향을 설명.
+- 의료 최종 판단은 의료진/구급대원 몫 — '보조 정보'로 제시. 평소 답변은 3~5문장.
 
 [질문]
 {question}
