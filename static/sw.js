@@ -1,7 +1,7 @@
 // TRIAGE-1 Service Worker
 // 전략: 정적 자산 → Cache First / API → Network Only
 
-const CACHE_NAME = 'triage1-v3.8';
+const CACHE_NAME = 'triage1-v3.9';
 
 const STATIC_ASSETS = [
   '/',

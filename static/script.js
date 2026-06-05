@@ -164,6 +164,7 @@ document.getElementById('recommendBtn').addEventListener('click', async () => {
 
         const data = await resp.json();
         renderResults(data, resultEl, summaryEl);
+        setupChat(payload, data);   // 챗봇 컨텍스트 준비 + 표시
 
         // 결과로 스크롤
         setTimeout(() => summaryEl.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
@@ -316,3 +317,81 @@ function renderEquip(bed) {
     if (!items.length) return '';
     return `<div class="equip-row">${items.map(x => `<span class="equip-tag">🟢 ${x}</span>`).join('')}</div>`;
 }
+
+// ═══════════════════════════════════════════
+// AI 챗봇 — 추천 결과에 대한 질의응답 (Gemini)
+// ═══════════════════════════════════════════
+let chatContext = null;     // 현재 추천 컨텍스트
+let chatHistory = [];       // 대화 기록
+
+function setupChat(payload, data) {
+    const matched = (data.matched || []).slice(0, 5).map((h, i) => {
+        const have = (h.required_specialties || []).filter(s => !(h.missing_specialties || []).includes(s));
+        return {
+            rank: i + 1,
+            name: h.name,
+            level: h.level,
+            dist_km: (typeof h.route_distance_km === 'number' ? h.route_distance_km : h.dist_km),
+            time: h.travel_time_min || null,
+            score: ((h.suitability?.suitability_score ?? h.score ?? 0) * 100).toFixed(0),
+            beds: (h.status?.hvec != null && h.status.hvec >= 0) ? h.status.hvec : '정보없음',
+            spec: have.join(',') || '추론',
+            reason: h.reason || ''
+        };
+    });
+    chatContext = {
+        patient: {
+            triage: data.field_triage?.high_risk ? 'RED(고위험)' : 'YELLOW(중등도)',
+            gcs: payload.gcs_motor, sbp: payload.sbp, rr: payload.rr,
+            injuries: (payload.injuries || []).join(', ')
+        },
+        matched
+    };
+    chatHistory = [];
+    document.getElementById('chat-log').innerHTML = '';
+    document.getElementById('chatbox').style.display = 'block';
+}
+
+async function sendChat(question) {
+    if (!question || !chatContext) return;
+    const log = document.getElementById('chat-log');
+    appendChat('user', question);
+    const input = document.getElementById('chat-input');
+    input.value = '';
+    const thinking = appendChat('ai', '…생각 중');
+    try {
+        const resp = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, context: { ...chatContext, history: chatHistory } })
+        });
+        const d = await resp.json();
+        const answer = d.answer || d.error || '답변을 받지 못했습니다.';
+        thinking.querySelector('.chat-bubble').textContent = answer;
+        chatHistory.push({ role: 'user', text: question });
+        chatHistory.push({ role: 'ai', text: answer });
+    } catch (e) {
+        thinking.querySelector('.chat-bubble').textContent = '⚠️ 연결 실패. 다시 시도해 주세요.';
+    }
+    log.scrollTop = log.scrollHeight;
+}
+
+function appendChat(role, text) {
+    const log = document.getElementById('chat-log');
+    const row = document.createElement('div');
+    row.className = `chat-msg ${role}`;
+    row.innerHTML = `<div class="chat-bubble">${text.replace(/</g, '&lt;')}</div>`;
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+    return row;
+}
+
+// 챗봇 이벤트 바인딩 (페이지 로드 시)
+document.addEventListener('DOMContentLoaded', () => {
+    const send = document.getElementById('chat-send');
+    const input = document.getElementById('chat-input');
+    if (send) send.addEventListener('click', () => sendChat(input.value.trim()));
+    if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendChat(input.value.trim()); } });
+    document.querySelectorAll('.chat-chip').forEach(c =>
+        c.addEventListener('click', () => sendChat(c.dataset.q)));
+});

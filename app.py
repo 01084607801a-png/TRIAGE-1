@@ -1990,6 +1990,59 @@ def recommend():
     })
 
 
+@app.route('/api/chat', methods=['POST'])
+@limiter.limit("20 per minute")
+def chat():
+    """추천 결과에 대한 질의응답 챗봇 (Gemini). 현재 추천 컨텍스트를 근거로 답변."""
+    data = request.json or {}
+    question = (data.get('question') or '').strip()
+    context = data.get('context') or {}
+    if not question:
+        return jsonify({'error': '질문을 입력하세요'}), 400
+    if not LLM_AVAILABLE:
+        return jsonify({'answer': '⚠️ AI 챗봇은 Gemini 키가 설정되어야 사용할 수 있습니다. (현재는 규칙 기반 추천만 제공)'}), 200
+
+    patient = context.get('patient') or {}
+    matched = context.get('matched') or []
+    lines = []
+    for i, h in enumerate(matched[:5], 1):
+        lines.append(
+            f"{i}순위 {h.get('name')} | {h.get('level')} | {h.get('dist_km')}km · {h.get('time')}분 | "
+            f"적합도 {h.get('score')}점 | 응급실 {h.get('beds')} | 전문과 {h.get('spec')} | 사유: {str(h.get('reason',''))[:80]}"
+        )
+    hospitals_str = "\n".join(lines) if lines else "(추천 목록 없음)"
+
+    history = context.get('history') or []
+    hist_str = "\n".join(f"{m.get('role')}: {m.get('text')}" for m in history[-4:]) if history else ""
+
+    prompt = f"""당신은 외상 이송을 돕는 응급의학 AI 어시스턴트입니다. 아래 '현재 추천 결과'를 근거로 구급대원/사용자의 질문에 답하세요.
+
+[환자 상태]
+- 중증도: {patient.get('triage')} / GCS {patient.get('gcs')} / 혈압 {patient.get('sbp')} / 호흡 {patient.get('rr')} / 손상부위 {patient.get('injuries')}
+
+[현재 추천 순위 — 이 데이터에만 근거할 것]
+{hospitals_str}
+
+[추천 로직]
+- 순위는 '병원 등급(역량) · 전문과 일치 · 거리 · 가용병상'을 가중합한 적합도 점수로 결정됨.
+- 중증(RED)일수록 거리보다 역량(권역외상센터 등) 비중이 커짐. HEMS(닥터헬기)는 AMPT 점수·거리로 자동 권고.
+{f'[이전 대화]{chr(10)}{hist_str}' if hist_str else ''}
+
+[답변 규칙]
+- 한국어로 2~4문장, 간결하고 명확하게.
+- 위 데이터에 없는 사실은 추측 금지 → "실시간 유선 확인이 필요합니다"로 안내.
+- 사용자가 추가 정보(예: 임산부, 소아, 항응고제 복용)를 주면, 그 점이 병원 선택에 어떤 영향을 주는지 설명.
+- 의료 최종 판단은 의료진/구급대원 몫임을 의식하고 '보조 정보'로 제시.
+
+[질문]
+{question}
+"""
+    answer = call_gemini(prompt, max_tokens=600)
+    if not answer:
+        return jsonify({'answer': '죄송합니다, 지금은 답변을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.'}), 200
+    return jsonify({'answer': answer})
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     desktop_mode = os.environ.get('TRIAGE_DESKTOP') == '1'
