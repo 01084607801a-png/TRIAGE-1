@@ -209,9 +209,13 @@ else:
     logger.warning("Gemini API key not set - using rule-based explanation fallback")
 
 
+LAST_GEMINI_ERROR = None  # 진단용 — 마지막 Gemini 실패 사유
+
 def call_gemini(prompt, max_tokens=512, timeout=20):
     """Gemini generateContent REST 호출. 성공 시 텍스트, 실패 시 None."""
+    global LAST_GEMINI_ERROR
     if not GEMINI_API_KEY:
+        LAST_GEMINI_ERROR = "no_key"
         return None
     try:
         url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
@@ -222,12 +226,22 @@ def call_gemini(prompt, max_tokens=512, timeout=20):
         }
         r = requests.post(url, json=body, timeout=timeout)
         if r.status_code != 200:
-            logger.warning(f"Gemini HTTP {r.status_code}: {r.text[:200]}")
+            LAST_GEMINI_ERROR = f"HTTP {r.status_code}: {r.text[:180]}"
+            logger.warning(f"Gemini {LAST_GEMINI_ERROR}")
             return None
         data = r.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        cand = (data.get("candidates") or [{}])[0]
+        parts = (cand.get("content") or {}).get("parts") or []
+        text = "".join(p.get("text", "") for p in parts).strip()
+        if not text:
+            LAST_GEMINI_ERROR = f"empty (finish={cand.get('finishReason')}) {str(data)[:160]}"
+            logger.warning(f"Gemini {LAST_GEMINI_ERROR}")
+            return None
+        LAST_GEMINI_ERROR = None
+        return text
     except Exception as e:
-        logger.warning(f"Gemini error: {e}")
+        LAST_GEMINI_ERROR = f"exception: {type(e).__name__}: {e}"
+        logger.warning(f"Gemini {LAST_GEMINI_ERROR}")
         return None
 
 APP_VERSION = "3.4.0"  # Updated for Phase 1
@@ -2065,7 +2079,8 @@ def chat():
 """
     answer = call_gemini(prompt, max_tokens=600)
     if not answer:
-        return jsonify({'answer': '죄송합니다, 지금은 답변을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.'}), 200
+        return jsonify({'answer': '죄송합니다, 지금은 답변을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.',
+                        'debug': LAST_GEMINI_ERROR}), 200
     return jsonify({'answer': answer})
 
 
